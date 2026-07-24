@@ -228,18 +228,20 @@ function detectWSL(): boolean {
 	return false;
 }
 
+export interface ReviewDecision {
+	approved: boolean;
+	feedback: string;
+	annotations: unknown[];
+	agentSwitch?: string;
+	exit?: boolean;
+}
+
 export interface ReviewServerResult {
 	port: number;
 	portSource: "env" | "remote-default" | "random";
 	url: string;
 	isRemote: boolean;
-	waitForDecision: () => Promise<{
-		approved: boolean;
-		feedback: string;
-		annotations: unknown[];
-		agentSwitch?: string;
-		exit?: boolean;
-	}>;
+	waitForDecision: () => Promise<ReviewDecision>;
 	stop: () => void;
 }
 
@@ -248,6 +250,7 @@ export async function startReviewServer(options: {
 	gitRef: string;
 	htmlContent: string;
 	origin?: string;
+	persistentFeedback?: boolean;
 	diffType?: DiffType | WorkspaceDiffType;
 	gitContext?: GitContext;
 	/**
@@ -1358,22 +1361,18 @@ export async function startReviewServer(options: {
 		(options.shareBaseUrl ?? process.env.PLANNOTATOR_SHARE_URL) || undefined;
 	const pasteApiUrl =
 		(options.pasteApiUrl ?? process.env.PLANNOTATOR_PASTE_URL) || undefined;
-	let resolveDecision!: (result: {
-		approved: boolean;
-		feedback: string;
-		annotations: unknown[];
-		agentSwitch?: string;
-		exit?: boolean;
-	}) => void;
-	const decisionPromise = new Promise<{
-		approved: boolean;
-		feedback: string;
-		annotations: unknown[];
-		agentSwitch?: string;
-		exit?: boolean;
-	}>((r) => {
-		resolveDecision = r;
-	});
+	const pendingDecisions: ReviewDecision[] = [];
+	const decisionWaiters: Array<(result: ReviewDecision) => void> = [];
+	const resolveDecision = (result: ReviewDecision): void => {
+		const waiter = decisionWaiters.shift();
+		if (waiter) waiter(result);
+		else pendingDecisions.push(result);
+	};
+	const waitForDecision = (): Promise<ReviewDecision> => {
+		const pending = pendingDecisions.shift();
+		if (pending) return Promise.resolve(pending);
+		return new Promise((resolvePromise) => decisionWaiters.push(resolvePromise));
+	};
 
 	const aiRuntime = aiEnabled ? await createPiAIRuntime({ getCwd: resolveAgentCwd }) : null;
 
@@ -1555,6 +1554,7 @@ export async function startReviewServer(options: {
 				gitRef: servedGitRef,
 				snapshotId: servedSnapshotId,
 				origin: options.origin ?? "pi",
+				persistentFeedback: options.persistentFeedback === true,
 				mode: isWorkspaceMode ? "workspace" : undefined,
 				diffType: hasLocalAccess || isWorkspaceMode ? servedDiffType : undefined,
 				// Echo the active base so page refresh/reconnect rehydrates the
@@ -2752,8 +2752,11 @@ export async function startReviewServer(options: {
 		portSource,
 		url: serverUrl,
 		isRemote,
-		waitForDecision: () => decisionPromise,
+		waitForDecision,
 		stop: () => {
+			while (decisionWaiters.length > 0) {
+				resolveDecision({ approved: false, feedback: "", annotations: [], exit: true });
+			}
 			process.removeListener("exit", exitHandler);
 			agentJobs.killAll();
 			aiRuntime?.dispose();

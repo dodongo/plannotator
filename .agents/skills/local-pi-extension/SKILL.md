@@ -53,12 +53,19 @@ pull request unless the user changes this policy.
 
 ## Current custom behavior
 
-Pi code review accepts an optional local Git comparison base:
+Start one persistent Pi code review session with an optional local Git
+comparison base:
 
-    /review --base origin/release/2026.08
+    /review-start
+    /review-start --base origin/release/2026.08
 
 Without --base, review keeps the detected origin/HEAD default. Do not use
 --base with a pull request URL or --no-local.
+
+Sending feedback keeps the browser review open for more feedback. Stop the
+session from Pi with:
+
+    /review-stop
 
 ## Take the latest stable extension
 

@@ -126,6 +126,7 @@ interface DiffData {
   gitContext?: GitContext;
   diffOptions?: DiffOption[];
   sharingEnabled?: boolean;
+  persistentFeedback?: boolean;
   prStackInfo?: PRStackInfo | null;
   prDiffScope?: PRDiffScope;
   prDiffScopeOptions?: PRDiffScopeOption[];
@@ -337,6 +338,7 @@ const ReviewApp: React.FC = () => {
   const [isApproving, setIsApproving] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [submitted, setSubmitted] = useState<'approved' | 'feedback' | 'exited' | false>(false);
+  const [persistentFeedback, setPersistentFeedback] = useState(false);
   const [showApproveWarning, setShowApproveWarning] = useState(false);
   const [showExitWarning, setShowExitWarning] = useState(false);
   const [sharingEnabled, setSharingEnabled] = useState(true);
@@ -1324,6 +1326,7 @@ const ReviewApp: React.FC = () => {
         commitInfo?: CommitDiffInfo;
         baseBehindRemote?: boolean;
         snapshotId?: string;
+        persistentFeedback?: boolean;
         serverConfig?: { displayName?: string; gitUser?: string };
       }) => {
         // Initialize config store with server-provided values (config file > cookie > default)
@@ -1332,6 +1335,7 @@ const ReviewApp: React.FC = () => {
         setGitUser(data.serverConfig?.gitUser);
         setSnapshotId(data.snapshotId);
         setAiEnabled(data.aiEnabled !== false);
+        setPersistentFeedback(data.persistentFeedback === true);
         const apiFiles = orderFilesBySections(parseDiffToFiles(data.rawPatch), data.sections);
         setDiffData({
           files: apiFiles,
@@ -2534,7 +2538,16 @@ const ReviewApp: React.FC = () => {
         }),
       });
       if (res.ok) {
-        setSubmitted('feedback');
+        if (persistentFeedback) {
+          dismissDraft();
+          setAnnotations([]);
+          setDescriptionAnnotations([]);
+          setCommentAnnotations([]);
+          setIsSendingFeedback(false);
+          toast.success('Feedback sent to Pi');
+        } else {
+          setSubmitted('feedback');
+        }
       } else {
         throw new Error('Failed to send');
       }
@@ -2544,7 +2557,7 @@ const ReviewApp: React.FC = () => {
       setTimeout(() => setCopyFeedback(null), 2000);
       setIsSendingFeedback(false);
     }
-  }, [totalAnnotationCount, feedbackMarkdown, allAnnotations, getDraftGeneration]);
+  }, [totalAnnotationCount, feedbackMarkdown, allAnnotations, getDraftGeneration, persistentFeedback, dismissDraft]);
 
   // Exit review session without sending any feedback
   const handleExit = useCallback(async () => {

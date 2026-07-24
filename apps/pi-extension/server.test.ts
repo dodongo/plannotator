@@ -1314,6 +1314,23 @@ describe("pi review server", () => {
         annotations: [{ id: "note-1" }],
         agentSwitch: undefined,
       });
+
+      const followUpResponse = await fetch(server.url + "/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approved: false,
+          feedback: "Please update it again",
+          annotations: [{ id: "note-2" }],
+        }),
+      });
+      expect(followUpResponse.status).toBe(200);
+      await expect(server.waitForDecision()).resolves.toEqual({
+        approved: false,
+        feedback: "Please update it again",
+        annotations: [{ id: "note-2" }],
+        agentSwitch: undefined,
+      });
     } finally {
       server.stop();
     }

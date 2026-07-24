@@ -63,6 +63,7 @@ export interface PlanReviewDecision {
 
 export interface BrowserDecisionSession<T> {
 	url: string;
+	open: () => Promise<void>;
 	waitForDecision: () => Promise<T>;
 	stop: () => void;
 }
@@ -74,6 +75,7 @@ type CodeReviewOptions = {
 	prUrl?: string;
 	vcsType?: VcsSelection;
 	useLocal?: boolean;
+	persistentFeedback?: boolean;
 };
 
 type CodeReviewDecision = {
@@ -179,6 +181,7 @@ function startBrowserDecisionSession<T>(
 
 	return {
 		url: server.url,
+		open: () => openBrowserForServer(server.url, ctx),
 		waitForDecision: () => {
 			if (decisionPromise) return decisionPromise;
 			if (stopped) return Promise.reject(createStoppedError());
@@ -198,6 +201,27 @@ function startBrowserDecisionSession<T>(
 			return decisionPromise;
 		},
 		stop,
+	};
+}
+
+function startPersistentBrowserDecisionSession<T>(
+	server: { url: string; stop: () => void },
+	ctx: ExtensionContext,
+	waitForResult: () => Promise<T>,
+): BrowserDecisionSession<T> {
+	void openBrowserForServer(server.url, ctx);
+	let stopped = false;
+	return {
+		url: server.url,
+		open: () => openBrowserForServer(server.url, ctx),
+		waitForDecision: () => stopped
+			? Promise.reject(new Error("Plannotator browser session was stopped."))
+			: waitForResult(),
+		stop: () => {
+			if (stopped) return;
+			stopped = true;
+			server.stop();
+		},
 	};
 }
 
@@ -524,6 +548,7 @@ async function createCodeReviewBrowserSession(
 		gitRef,
 		error: diffError,
 		origin: "pi",
+		persistentFeedback: options.persistentFeedback,
 		diffType,
 		gitContext: gitCtx,
 		initialBase,
@@ -540,7 +565,9 @@ async function createCodeReviewBrowserSession(
 		onCleanup: worktreeCleanup,
 	});
 
-	return startBrowserDecisionSession(server, ctx, server.waitForDecision);
+	return options.persistentFeedback
+		? startPersistentBrowserDecisionSession(server, ctx, server.waitForDecision)
+		: startBrowserDecisionSession(server, ctx, server.waitForDecision);
 }
 
 export async function openMarkdownAnnotation(

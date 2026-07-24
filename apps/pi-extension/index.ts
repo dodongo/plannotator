@@ -12,7 +12,7 @@
  * - Writes restricted to markdown files inside cwd during planning
  * - plannotator_submit_plan tool with browser-based visual approval
  * - [DONE:n] markers for execution progress tracking
- * - /review and /plannotator-review commands for code review
+ * - /review-start and /review-stop commands for persistent code review
  * - /plannotator-annotate command for markdown annotation
  */
 
@@ -277,6 +277,7 @@ export default function plannotator(pi: ExtensionAPI): void {
 	let todoProvider: TodoProvider | undefined;
 	/** Latch: no provider found, or one sync failed. Cleared on return to idle. */
 	let todoProviderDisabled = false;
+	let activeCodeReviewSession: Awaited<ReturnType<typeof startCodeReviewBrowserSession>> | null = null;
 
 	pi.on("session_start", (_event, ctx) => {
 		sessionAlive = true;
@@ -285,6 +286,8 @@ export default function plannotator(pi: ExtensionAPI): void {
 
 	pi.on("session_shutdown", () => {
 		sessionAlive = false;
+		activeCodeReviewSession?.stop();
+		activeCodeReviewSession = null;
 		currentPiSession.clear();
 	});
 
@@ -550,9 +553,18 @@ export default function plannotator(pi: ExtensionAPI): void {
 		},
 	});
 
-	const codeReviewCommand: Parameters<ExtensionAPI["registerCommand"]>[1] = {
-		description: "Open code review; options: --base <ref>, --git, --gitbutler, --local, --no-local",
+	const reviewStartCommand: Parameters<ExtensionAPI["registerCommand"]>[1] = {
+		description: "Start persistent code review; options: --base <ref>, --git, --gitbutler, --local, --no-local",
 		handler: async (args, ctx) => {
+			if (activeCodeReviewSession) {
+				if (args?.trim()) {
+					ctx.ui.notify("A code review session is already active. Stop it before changing review options.", "error");
+					return;
+				}
+				await activeCodeReviewSession.open();
+				ctx.ui.notify(sessionOpenedMessage("Code review reopened", activeCodeReviewSession.url), "info");
+				return;
+			}
 			if (!hasReviewBrowserHtml()) {
 				ctx.ui.notify(
 					"Code review UI not available. Run 'bun run build' in the pi-extension directory.",
@@ -572,17 +584,24 @@ export default function plannotator(pi: ExtensionAPI): void {
 					defaultBranch: reviewArgs.defaultBranch,
 					vcsType: reviewArgs.vcsType,
 					useLocal: reviewArgs.useLocal,
+					persistentFeedback: true,
 				});
+				activeCodeReviewSession = session;
 				ctx.ui.notify(sessionOpenedMessage("Code review opened", session.url), "info");
-				void session
-					.waitForDecision()
-					.then(async (result) => {
-						try {
+				void (async () => {
+					try {
+						while (activeCodeReviewSession === session) {
+							const result = await session.waitForDecision();
+							if (activeCodeReviewSession !== session) return;
 							if (result.exit) {
+								activeCodeReviewSession = null;
+								session.stop();
 								safeNotify(ctx, "Code review session closed.", "info", origin);
 								return;
 							}
 							if (result.approved) {
+								activeCodeReviewSession = null;
+								session.stop();
 								const { getReviewApprovedPrompt } = await loadPlannotatorPrompts();
 								sendUserMessageWithCurrentSessionFallback(
 									pi,
@@ -593,10 +612,9 @@ export default function plannotator(pi: ExtensionAPI): void {
 								);
 								return;
 							}
-							if (!result.feedback) {
-								safeNotify(ctx, "Code review closed (no feedback).", "info", origin);
-								return;
-							}
+							if (!result.feedback) continue;
+
+						try {
 							// Append the verification-only suffix when the reviewer sent
 							// annotations to act on (PR mode included). Platform PR actions
 							// (approve/comment posted to the host) come back with an empty
@@ -617,10 +635,13 @@ export default function plannotator(pi: ExtensionAPI): void {
 						} catch (err) {
 							reportBackgroundError(ctx, "Plannotator code review feedback could not be sent", err, origin);
 						}
-					})
-					.catch((err) => {
+						}
+					} catch (err) {
+						if (activeCodeReviewSession === session) activeCodeReviewSession = null;
+						session.stop();
 						reportBackgroundError(ctx, "Plannotator code review session failed", err, origin);
-					});
+					}
+				})();
 			} catch (err) {
 				ctx.ui.notify(
 					`Failed to start code review UI: ${getStartupErrorMessage(err)}`,
@@ -629,8 +650,19 @@ export default function plannotator(pi: ExtensionAPI): void {
 			}
 		},
 	};
-	pi.registerCommand("review", codeReviewCommand);
-	pi.registerCommand("plannotator-review", codeReviewCommand);
+	pi.registerCommand("review-start", reviewStartCommand);
+	pi.registerCommand("review-stop", {
+		description: "Stop the active code review browser session",
+		handler: async (_args, ctx) => {
+			if (!activeCodeReviewSession) {
+				ctx.ui.notify("No active code review session.", "warning");
+				return;
+			}
+			activeCodeReviewSession.stop();
+			activeCodeReviewSession = null;
+			ctx.ui.notify("Code review session stopped.", "info");
+		},
+	});
 
 	pi.registerCommand("plannotator-annotate", {
 		description: "Open markdown file or folder in annotation UI",
