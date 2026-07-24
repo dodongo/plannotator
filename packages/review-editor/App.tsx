@@ -25,7 +25,7 @@ import {
   markLookAndFeelAnnouncementSeen,
   needsLookAndFeelAnnouncement,
 } from '@plannotator/ui/utils/lookAndFeelAnnouncement';
-import { CodeAnnotation, CodeAnnotationType, SelectedLineRange, TokenAnnotationMeta, ConventionalLabel, ConventionalDecoration, Annotation, CommentAnnotation, AgentJobInfo, type ArtifactAnnotationMeta } from '@plannotator/ui/types';
+import { CodeAnnotation, CodeAnnotationType, SelectedLineRange, TokenAnnotationMeta, ConventionalLabel, ConventionalDecoration, Annotation, CommentAnnotation, AgentJobInfo, type ArtifactAnnotationMeta, type ReviewCommentStatus } from '@plannotator/ui/types';
 import type { CommentAskAIHandler } from '@plannotator/ui/components/CommentPopover';
 import { useResizablePanel } from '@plannotator/ui/hooks/useResizablePanel';
 import { useCodeAnnotationDraft } from '@plannotator/ui/hooks/useCodeAnnotationDraft';
@@ -132,11 +132,6 @@ interface DiffData {
   prDiffScopeOptions?: PRDiffScopeOption[];
   semanticDiff?: SemanticDiffAdvert;
 }
-
-type ReviewCommentStatus = {
-  state: 'sending' | 'submitted' | 'addressed' | 'failed';
-  note?: string;
-};
 
 function getFileTabTitle(filePath: string): string {
   return filePath.split('/').pop() ?? filePath;
@@ -390,6 +385,21 @@ const ReviewApp: React.FC = () => {
       if (timer) clearTimeout(timer);
     };
   }, [persistentFeedback]);
+
+  useEffect(() => {
+    setAnnotations((current) => {
+      let changed = false;
+      const next = current.map((annotation) => {
+        const status = reviewCommentStatuses[annotation.id];
+        if (annotation.reviewStatus?.state === status?.state && annotation.reviewStatus?.note === status?.note) {
+          return annotation;
+        }
+        changed = true;
+        return { ...annotation, reviewStatus: status };
+      });
+      return changed ? next : current;
+    });
+  }, [reviewCommentStatuses]);
 
   const { prMetadata, prStackInfo, prStackTree, prDiffScope, prDiffScopeOptions, prPatchIncomplete, prPatchUpgradeAvailable, updatePRSession } = usePRSession();
 

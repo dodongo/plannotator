@@ -171,6 +171,7 @@ export interface CodeAnnotation {
   severity?: 'important' | 'nit' | 'pre_existing'; // Agent review severity (Claude)
   reasoning?: string; // Validation chain — how the issue was confirmed (Claude)
   reviewProfileLabel?: string; // Custom review that produced this finding — shown as a tag
+  reviewStatus?: ReviewCommentStatus;
   conventionalLabel?: ConventionalLabel;
   decorations?: ConventionalDecoration[];
   prUrl?: string;
@@ -193,6 +194,11 @@ export interface CodeAnnotation {
   gitButlerBase?: string;
   /** Exact server snapshot that supplied the GitButler line coordinates. */
   gitButlerSnapshotId?: string;
+}
+
+export interface ReviewCommentStatus {
+  state: 'sending' | 'submitted' | 'addressed' | 'failed';
+  note?: string;
 }
 
 /** Token-level metadata passed from selection to annotation creation. */
@@ -230,6 +236,7 @@ export interface DiffAnnotationMetadata {
    *  inline copy action matches the sidebar/banner — the inline card only has
    *  the projected metadata, not the full annotation. */
   copyText?: string;
+  reviewStatus?: ReviewCommentStatus;
   // AI marker fields (set when kind === 'ai-marker')
   kind?: 'annotation' | 'ai-marker';
   questionId?: string;

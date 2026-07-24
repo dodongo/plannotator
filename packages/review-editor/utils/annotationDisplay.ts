@@ -55,5 +55,6 @@ export function lineAnnotationMetadata(ann: CodeAnnotation): DiffAnnotationMetad
     reviewProfileLabel: ann.reviewProfileLabel,
     source: ann.source,
     copyText: ann.text ? commentCopyText(ann) : undefined,
+    reviewStatus: ann.reviewStatus,
   };
 }

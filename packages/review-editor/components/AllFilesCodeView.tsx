@@ -1383,6 +1383,7 @@ export const AllFilesCodeView: React.FC<AllFilesCodeViewProps> = ({
               'F', a.id, a.text ?? '', a.source ?? '', a.author ?? '',
               a.reviewProfileLabel ?? '', a.conventionalLabel ?? '',
               (a.decorations ?? []).join(','), a.createdAt ?? 0, a.reasoning ?? '',
+              a.reviewStatus?.state ?? '', a.reviewStatus?.note ?? '',
             ])
           : JSON.stringify([
               a.id, a.lineEnd, a.side, a.type,
@@ -1390,6 +1391,7 @@ export const AllFilesCodeView: React.FC<AllFilesCodeViewProps> = ({
               a.conventionalLabel ?? '', (a.decorations ?? []).join(','),
               a.severity ?? '', a.reasoning ?? '', a.author ?? '',
               a.reviewProfileLabel ?? '', a.source ?? '', a.createdAt ?? 0,
+              a.reviewStatus?.state ?? '', a.reviewStatus?.note ?? '',
             ]);
         map.set(a.filePath, `${map.get(a.filePath) ?? ''}${sig}\n`);
       }

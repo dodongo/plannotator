@@ -24,6 +24,16 @@ export const InlineAnnotation: React.FC<InlineAnnotationProps> = ({
   onDelete,
 }) => {
   const severity = metadata.severity ? SEVERITY_STYLES[metadata.severity] : null;
+  const reviewStatus = metadata.reviewStatus;
+  const reviewStatusLabel = reviewStatus?.state === 'addressed'
+    ? 'Addressed by agent'
+    : reviewStatus?.state === 'failed'
+      ? 'Delivery failed — send again'
+      : reviewStatus?.state === 'sending'
+        ? 'Sending to Pi'
+        : reviewStatus?.state === 'submitted'
+          ? 'Waiting for agent'
+          : null;
 
   return (
     <div
@@ -44,6 +54,18 @@ export const InlineAnnotation: React.FC<InlineAnnotationProps> = ({
         author={metadata.author}
         createdAt={metadata.createdAt}
       />
+      {reviewStatusLabel && (
+        <div
+          className={reviewStatus?.state === 'addressed'
+            ? 'mb-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400'
+            : reviewStatus?.state === 'failed'
+              ? 'mb-1 text-[10px] font-medium text-red-600 dark:text-red-400'
+              : 'mb-1 text-[10px] font-medium text-amber-600 dark:text-amber-400'}
+          title={reviewStatus?.note}
+        >
+          {reviewStatusLabel}
+        </div>
+      )}
       {metadata.text && (
         <div className="review-comment-body">{renderInlineMarkdown(metadata.text)}</div>
       )}
@@ -58,7 +80,7 @@ export const InlineAnnotation: React.FC<InlineAnnotationProps> = ({
         </div>
       )}
       <CommentActions
-        onEdit={() => onEdit(metadata.annotationId)}
+        onEdit={reviewStatus && reviewStatus.state !== 'failed' ? undefined : () => onEdit(metadata.annotationId)}
         copyText={metadata.copyText}
         onDelete={() => onDelete(metadata.annotationId)}
       />
