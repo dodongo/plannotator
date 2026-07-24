@@ -3,6 +3,7 @@ import { stripWrappingQuotes } from "./resolve-file";
 
 export interface ParsedReviewArgs {
   prUrl?: string;
+  defaultBranch?: string;
   vcsType?: VcsSelection;
   useLocal: boolean;
 }
@@ -13,10 +14,16 @@ export function parseReviewArgs(input: string | string[]): ParsedReviewArgs {
     : tokenizeReviewArgs(input ?? "");
 
   let vcsType: VcsSelection | undefined;
+  let defaultBranch: string | undefined;
   let useLocal = true;
   const positional: string[] = [];
 
-  for (const token of tokens) {
+  for (let index = 0; index < tokens.length; index++) {
+    const token = tokens[index];
+    if (token.startsWith("--base=")) {
+      defaultBranch = requireBase(token.slice("--base=".length));
+      continue;
+    }
     switch (token) {
       case "--git":
         vcsType = "git";
@@ -30,6 +37,9 @@ export function parseReviewArgs(input: string | string[]): ParsedReviewArgs {
       case "--no-local":
         useLocal = false;
         break;
+      case "--base":
+        defaultBranch = requireBase(tokens[++index]);
+        break;
       default:
         positional.push(token);
         break;
@@ -37,11 +47,23 @@ export function parseReviewArgs(input: string | string[]): ParsedReviewArgs {
   }
 
   const target = positional[0];
+  const prUrl = target && isReviewUrl(target) ? target : undefined;
+  if (defaultBranch && (prUrl || !useLocal)) {
+    throw new Error("--base is only supported for local branch reviews");
+  }
   return {
-    prUrl: target && isReviewUrl(target) ? target : undefined,
+    prUrl,
+    defaultBranch,
     vcsType,
     useLocal,
   };
+}
+
+function requireBase(value: string | undefined): string {
+  if (!value || value.startsWith("--")) {
+    throw new Error("--base requires a branch or ref");
+  }
+  return value;
 }
 
 function isReviewUrl(value: string): boolean {

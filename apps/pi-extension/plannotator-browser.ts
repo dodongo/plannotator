@@ -470,6 +470,19 @@ async function createCodeReviewBrowserSession(
 		const config = loadConfig();
 		const managedVcs = await detectManagedVcs(cwd, options.vcsType);
 		const forcedVcs = !!options.vcsType && options.vcsType !== "auto";
+		if (options.defaultBranch) {
+			const vcsType = managedVcs?.id ?? options.vcsType;
+			if (vcsType !== "git") {
+				throw new Error("--base is only supported for a local Git review");
+			}
+			const verify = await reviewRuntime.runGit(
+				["rev-parse", "--verify", "--quiet", "--end-of-options", options.defaultBranch + "^{commit}"],
+				{ cwd },
+			);
+			if (verify.exitCode !== 0) {
+				throw new Error("Review base not found: " + options.defaultBranch);
+			}
+		}
 		if (managedVcs || forcedVcs) {
 			const result = await prepareLocalReviewDiff({
 				cwd,

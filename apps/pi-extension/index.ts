@@ -551,7 +551,7 @@ export default function plannotator(pi: ExtensionAPI): void {
 	});
 
 	const codeReviewCommand: Parameters<ExtensionAPI["registerCommand"]>[1] = {
-		description: "Open interactive code review for current changes or a PR URL; pass --git or --gitbutler to force that provider",
+		description: "Open code review; options: --base <ref>, --git, --gitbutler, --local, --no-local",
 		handler: async (args, ctx) => {
 			if (!hasReviewBrowserHtml()) {
 				ctx.ui.notify(
@@ -569,6 +569,7 @@ export default function plannotator(pi: ExtensionAPI): void {
 				const reviewArgs = parseReviewArgs(args ?? "");
 				const session = await startCodeReviewBrowserSession(ctx, {
 					prUrl: reviewArgs.prUrl,
+					defaultBranch: reviewArgs.defaultBranch,
 					vcsType: reviewArgs.vcsType,
 					useLocal: reviewArgs.useLocal,
 				});
