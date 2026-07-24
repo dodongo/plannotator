@@ -312,6 +312,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
 
   // Parse patch into FileDiffMetadata for @pierre/diffs FileDiff component
   const fileDiff = useMemo(() => getSingularPatch(patch), [patch]);
+  const isContentUnchangedRename = status === 'renamed' && /^similarity index 100%$/m.test(patch);
 
   // Fetch full file contents for expandable context
   const [fileContents, setFileContents] = useState<{ forPath: string; old: string | null; new: string | null } | null>(null);
@@ -716,26 +717,32 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
                 <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border transition-[width,background-color] group-hover:w-0.5 group-hover:bg-primary/50 group-active:w-0.5 group-active:bg-primary/70" />
               </div>
             )}
-            <PierreDiffContent
-              filePath={filePath}
-              fileDiff={augmentedDiff}
-              pierreTheme={pierreTheme}
-              diffStyle={diffStyle}
-              diffOverflow={diffOverflow}
-              diffIndicators={diffIndicators}
-              lineDiffType={lineDiffType}
-              disableLineNumbers={disableLineNumbers}
-              disableBackground={disableBackground}
-              expandUnchanged={expandUnchanged}
-              mergedAnnotations={mergedAnnotations}
-              pendingSelection={pendingSelection ?? selectedAnnotationRange}
-              onLineSelectionEnd={handlePierreLineSelectionEnd}
-              onGutterUtilityClick={handleGutterUtilityClick}
-              renderAnnotation={renderAnnotation}
-              onTokenClick={handleTokenClick}
-              onTokenEnter={handleTokenEnter}
-              onTokenLeave={handleTokenLeave}
-            />
+            {isContentUnchangedRename ? (
+              <div className="flex min-h-32 items-center justify-center rounded-md border border-border/40 bg-muted/10 px-6 text-center text-sm text-muted-foreground">
+                The contents of this file haven&apos;t changed. Only its path changed.
+              </div>
+            ) : (
+              <PierreDiffContent
+                filePath={filePath}
+                fileDiff={augmentedDiff}
+                pierreTheme={pierreTheme}
+                diffStyle={diffStyle}
+                diffOverflow={diffOverflow}
+                diffIndicators={diffIndicators}
+                lineDiffType={lineDiffType}
+                disableLineNumbers={disableLineNumbers}
+                disableBackground={disableBackground}
+                expandUnchanged={expandUnchanged}
+                mergedAnnotations={mergedAnnotations}
+                pendingSelection={pendingSelection ?? selectedAnnotationRange}
+                onLineSelectionEnd={handlePierreLineSelectionEnd}
+                onGutterUtilityClick={handleGutterUtilityClick}
+                renderAnnotation={renderAnnotation}
+                onTokenClick={handleTokenClick}
+                onTokenEnter={handleTokenEnter}
+                onTokenLeave={handleTokenLeave}
+              />
+            )}
           </div>
         </div>
 
