@@ -1564,6 +1564,33 @@ const ReviewApp: React.FC = () => {
     setAnnotations(prev => [...prev, withPRContext(newAnnotation)]);
   }, [identity, withPRContext]);
 
+  const removeSubmittedReviewComment = useCallback(async (id: string): Promise<boolean> => {
+    if (!reviewCommentStatuses[id]) return true;
+    try {
+      const response = await fetch('/api/feedback-comments', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commentIds: [id] }),
+      });
+      if (!response.ok) throw new Error('Failed to remove review comment');
+      setReviewCommentStatuses((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to remove submitted review comment:', error);
+      toast.error('Failed to remove comment');
+      return false;
+    }
+  }, [reviewCommentStatuses]);
+
+  const handleDeleteEditorAnnotation = useCallback(async (id: string) => {
+    if (!await removeSubmittedReviewComment(id)) return;
+    await deleteEditorAnnotation(id);
+  }, [deleteEditorAnnotation, removeSubmittedReviewComment]);
+
   // Edit annotation
   const handleEditAnnotation = useCallback((
     id: string,
@@ -1597,8 +1624,8 @@ const ReviewApp: React.FC = () => {
   // delete buttons) that only republish on item version bumps — a closure over
   // the state value goes stale and would leave a dangling selection id after
   // deleting the currently-selected annotation.
-  const handleDeleteAnnotation = useCallback((id: string) => {
-    if (reviewCommentStatuses[id] && reviewCommentStatuses[id].state !== 'failed') return;
+  const handleDeleteAnnotation = useCallback(async (id: string) => {
+    if (!await removeSubmittedReviewComment(id)) return;
     const ann = allAnnotationsRef.current.find(a => a.id === id);
     if (ann?.source && externalAnnotations.some(e => e.id === id)) {
       deleteExternalAnnotation(id);
@@ -1607,7 +1634,7 @@ const ReviewApp: React.FC = () => {
     }
     setAnnotations(prev => prev.filter(a => a.id !== id));
     setSelectedAnnotationId(prev => (prev === id ? null : prev));
-  }, [deleteExternalAnnotation, externalAnnotations, reviewCommentStatuses]);
+  }, [deleteExternalAnnotation, externalAnnotations, removeSubmittedReviewComment]);
 
   // Handle identity change - update author on existing annotations
   const handleIdentityChange = useCallback((oldIdentity: string, newIdentity: string) => {
@@ -2218,10 +2245,11 @@ const ReviewApp: React.FC = () => {
     }
   }, [descriptionAnnotations, openPRArtifactsPanel]);
 
-  const handleDeleteDescriptionAnnotation = useCallback((id: string) => {
+  const handleDeleteDescriptionAnnotation = useCallback(async (id: string) => {
+    if (!await removeSubmittedReviewComment(id)) return;
     setDescriptionAnnotations(prev => prev.filter(a => a.id !== id));
     setSelectedDescriptionAnnotationId(prev => (prev === id ? null : prev));
-  }, []);
+  }, [removeSubmittedReviewComment]);
 
   // Ask AI about a description selection — file-less scope ask (same mechanism
   // the HTML viewer uses). The popover passes the label + selected text.
@@ -2264,10 +2292,11 @@ const ReviewApp: React.FC = () => {
     }
   }, [commentAnnotations, openPROverviewPanel, openPRArtifactsPanel]);
 
-  const handleDeleteCommentAnnotation = useCallback((id: string) => {
+  const handleDeleteCommentAnnotation = useCallback(async (id: string) => {
+    if (!await removeSubmittedReviewComment(id)) return;
     setCommentAnnotations(prev => prev.filter(a => a.id !== id));
     setSelectedCommentAnnotationId(prev => (prev === id ? null : prev));
-  }, []);
+  }, [removeSubmittedReviewComment]);
 
   const handleAskAIForComment = useCallback<CommentAskAIHandler>((question, context) => {
     askAI({
@@ -3653,7 +3682,7 @@ const ReviewApp: React.FC = () => {
                 feedbackMarkdown={feedbackMarkdown}
                 width={panelResize.width}
                 editorAnnotations={visibleEditorAnnotations}
-                onDeleteEditorAnnotation={deleteEditorAnnotation}
+                onDeleteEditorAnnotation={handleDeleteEditorAnnotation}
                 descriptionAnnotations={visibleDescriptionAnnotations}
                 selectedDescriptionAnnotationId={selectedDescriptionAnnotationId}
                 onSelectDescriptionAnnotation={handleSelectDescriptionAnnotation}

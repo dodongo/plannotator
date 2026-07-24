@@ -1366,6 +1366,7 @@ export async function startReviewServer(options: {
 	const decisionWaiters: Array<(result: ReviewDecision) => void> = [];
 	const feedbackStatuses = new Map<string, { state: "sending" | "submitted" | "addressed" | "failed"; note?: string }>();
 	const feedbackAnnotations = new Map<string, unknown>();
+	const removedFeedbackCommentIds = new Set<string>();
 	const resolveDecision = (result: ReviewDecision): void => {
 		const waiter = decisionWaiters.shift();
 		if (waiter) waiter(result);
@@ -2733,7 +2734,7 @@ export async function startReviewServer(options: {
 				json(res, { error: "commentIds must contain at least one comment ID" }, 400);
 				return;
 			}
-			const unknown = ids.filter((id) => !feedbackStatuses.has(id));
+			const unknown = ids.filter((id) => !feedbackStatuses.has(id) && !removedFeedbackCommentIds.has(id));
 			if (unknown.length > 0) {
 				json(res, { error: "Unknown review comment IDs", unknown }, 404);
 				return;
@@ -2744,7 +2745,24 @@ export async function startReviewServer(options: {
 				return;
 			}
 			const note = typeof body.note === "string" && body.note.trim() ? body.note.trim() : undefined;
-			for (const id of ids) feedbackStatuses.set(id, { state: "addressed", ...(note && { note }) });
+			for (const id of ids) {
+				if (!removedFeedbackCommentIds.has(id)) feedbackStatuses.set(id, { state: "addressed", ...(note && { note }) });
+			}
+			json(res, { ok: true, commentIds: ids });
+		} else if (url.pathname === "/api/feedback-comments" && req.method === "DELETE") {
+			const body = await parseBody(req);
+			const ids = Array.isArray(body.commentIds)
+				? body.commentIds.filter((id): id is string => typeof id === "string" && id.length > 0)
+				: [];
+			if (ids.length === 0) {
+				json(res, { error: "commentIds must contain at least one comment ID" }, 400);
+				return;
+			}
+			for (const id of ids) {
+				feedbackStatuses.delete(id);
+				feedbackAnnotations.delete(id);
+				removedFeedbackCommentIds.add(id);
+			}
 			json(res, { ok: true, commentIds: ids });
 		} else if (url.pathname === "/api/feedback-delivery" && req.method === "POST") {
 			const body = await parseBody(req);
@@ -2753,6 +2771,7 @@ export async function startReviewServer(options: {
 				: [];
 			const delivered = body.delivered === true;
 			for (const id of ids) {
+				if (removedFeedbackCommentIds.has(id)) continue;
 				const current = feedbackStatuses.get(id);
 				if (current?.state !== "addressed") {
 					feedbackStatuses.set(id, { state: delivered ? "submitted" : "failed" });
@@ -2777,6 +2796,7 @@ export async function startReviewServer(options: {
 					? body.commentIds.filter((id): id is string => typeof id === "string" && id.length > 0)
 					: annotationIds;
 				for (const id of commentIds) {
+					removedFeedbackCommentIds.delete(id);
 					feedbackStatuses.set(id, { state: "sending" });
 				}
 				resolveDecision({

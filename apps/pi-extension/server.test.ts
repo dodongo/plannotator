@@ -1346,6 +1346,30 @@ describe("pi review server", () => {
       expect(statusPayload.statuses).toContainEqual({ id: "note-1", state: "addressed", note: "Updated" });
       expect(statusPayload.annotations).toContainEqual({ id: "note-1" });
 
+      const removed = await fetch(server.url + "/api/feedback-comments", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commentIds: ["note-1"] }),
+      });
+      expect(removed.status).toBe(200);
+      await fetch(server.url + "/api/feedback-delivery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commentIds: ["note-1"], delivered: true }),
+      });
+      const removedAddress = await fetch(server.url + "/api/feedback-address", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commentIds: ["note-1"] }),
+      });
+      expect(removedAddress.status).toBe(200);
+      const removedStatusPayload = await fetch(server.url + "/api/feedback-status").then((response) => response.json()) as {
+        statuses: Array<{ id: string }>;
+        annotations: Array<{ id: string }>;
+      };
+      expect(removedStatusPayload.statuses).not.toContainEqual(expect.objectContaining({ id: "note-1" }));
+      expect(removedStatusPayload.annotations).not.toContainEqual(expect.objectContaining({ id: "note-1" }));
+
       const followUpResponse = await fetch(server.url + "/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

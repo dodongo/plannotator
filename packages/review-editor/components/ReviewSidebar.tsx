@@ -324,7 +324,7 @@ export const ReviewSidebar: React.FC<ReviewSidebarProps> = /* React.memo */({
         )}
         <CommentActions
           copyText={annotation.text ? commentCopyText(annotation, scope) : undefined}
-          onDelete={status && status.state !== 'failed' ? undefined : () => onDeleteAnnotation(annotation.id)}
+          onDelete={() => onDeleteAnnotation(annotation.id)}
         />
       </div>
     );
