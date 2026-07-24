@@ -29,7 +29,14 @@ pull request unless the user changes this policy.
        git status --short --branch
        git log --oneline --decorate -10
 
-3. Make the smallest focused change. Keep generated build files out of git.
+3. Limit edits to the custom function, its focused tests, and agent-facing
+   local files such as this skill. Avoid upstream-facing churn:
+   1. Do not update README files, changelogs, release notes, screenshots,
+      package descriptions, or versions unless the user asks or the function
+      cannot work without the change.
+   2. Do not copy local-only usage notes into public project docs. Put notes an
+      agent needs in this skill instead.
+   3. Keep generated build files out of git.
 4. Run focused tests, then the checks required by the changed area.
 5. Build the Pi extension from the repository root:
 
@@ -43,6 +50,15 @@ pull request unless the user changes this policy.
 
 7. Commit the finished custom change on dg/custom. Never push it.
 8. Tell the user to run /reload in Pi.
+
+## Current custom behavior
+
+Pi code review accepts an optional local Git comparison base:
+
+    /review --base origin/release/2026.08
+
+Without --base, review keeps the detected origin/HEAD default. Do not use
+--base with a pull request URL or --no-local.
 
 ## Take the latest stable extension
 

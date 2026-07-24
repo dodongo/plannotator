@@ -171,8 +171,6 @@ Use these inside `systemPrompt` strings:
 
 ### Code review
 
-Local Git branch reviews use the detected default branch unless you pass <code>--base &lt;ref&gt;</code>, for example <code>/review --base origin/release/2026.08</code>.
-
 Use <code>/review</code> as the short Pi command for the same current-session
 code review opened by the full Plannotator command.
 
