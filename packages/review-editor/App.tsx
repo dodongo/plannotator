@@ -377,7 +377,10 @@ const ReviewApp: React.FC = () => {
           }
         }
       } catch {
-        // The next poll retries while the review server remains available.
+        if (persistentFeedback) {
+          setSubmitted((current) => current || 'exited');
+          return;
+        }
       }
       if (!cancelled) timer = setTimeout(poll, 1500);
     };
@@ -2685,9 +2688,13 @@ const ReviewApp: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to exit review:', error);
-      setIsExiting(false);
+      if (persistentFeedback) {
+        setSubmitted('exited');
+      } else {
+        setIsExiting(false);
+      }
     }
-  }, [getDraftGeneration]);
+  }, [getDraftGeneration, persistentFeedback]);
 
   // Approve without feedback (LGTM)
   const handleApprove = useCallback(async () => {
