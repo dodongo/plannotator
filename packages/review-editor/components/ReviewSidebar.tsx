@@ -317,6 +317,16 @@ export const ReviewSidebar: React.FC<ReviewSidebarProps> = /* React.memo */({
             {renderInlineMarkdown(annotation.text)}
           </div>
         )}
+        {status?.state === 'addressed' && status.note && (
+          <div className="mt-1.5 border-l-2 border-emerald-500/40 pl-2">
+            <div className="text-[9px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+              Agent response
+            </div>
+            <div className="text-xs text-foreground/80 review-comment-markdown">
+              {renderInlineMarkdown(status.note)}
+            </div>
+          </div>
+        )}
         {annotation.suggestedCode && !isGeneralScope && !addressedCollapsed && (
           <div className="mt-1.5">
             <SuggestionPreview code={annotation.suggestedCode} originalCode={annotation.originalCode} language={detectLanguage(annotation.filePath)} />

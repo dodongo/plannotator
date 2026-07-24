@@ -69,6 +69,16 @@ export const InlineAnnotation: React.FC<InlineAnnotationProps> = ({
       {metadata.text && (
         <div className="review-comment-body">{renderInlineMarkdown(metadata.text)}</div>
       )}
+      {reviewStatus?.state === 'addressed' && reviewStatus.note && (
+        <div className="mt-1.5 border-l-2 border-emerald-500/40 pl-2">
+          <div className="text-[9px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+            Agent response
+          </div>
+          <div className="text-xs text-foreground/80 review-comment-markdown">
+            {renderInlineMarkdown(reviewStatus.note)}
+          </div>
+        </div>
+      )}
       {metadata.reasoning && (
         <div className="review-comment-reasoning text-[11px] text-muted-foreground/60 leading-relaxed mt-1.5">
           {metadata.reasoning}
