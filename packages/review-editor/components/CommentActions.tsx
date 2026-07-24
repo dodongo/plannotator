@@ -23,7 +23,7 @@ export const CommentActions: React.FC<CommentActionsProps> = ({ onEdit, copyText
   if (!onEdit && !copyText && !onDelete) return null;
   return (
   <div
-    className="flex items-center justify-end gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+    className="comment-actions flex items-center justify-end gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
     onClick={(e) => e.stopPropagation()}
   >
     {onEdit && (
