@@ -62,6 +62,9 @@ comparison base:
 Without --base, review keeps the detected origin/HEAD default. Do not use
 --base with a pull request URL or --no-local.
 
+The start command returns immediately while server and diff setup continue in
+the background. Pi reports when the browser is ready.
+
 Sending feedback keeps the browser review open for more feedback. Stop the
 session from Pi with:
 

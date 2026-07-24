@@ -278,6 +278,8 @@ export default function plannotator(pi: ExtensionAPI): void {
 	/** Latch: no provider found, or one sync failed. Cleared on return to idle. */
 	let todoProviderDisabled = false;
 	let activeCodeReviewSession: Awaited<ReturnType<typeof startCodeReviewBrowserSession>> | null = null;
+	let codeReviewStartGeneration = 0;
+	let codeReviewStarting = false;
 	const publishCodeReviewSession = (session: typeof activeCodeReviewSession) => {
 		if (session) process.env.PLANNOTATOR_REVIEW_URL = session.url;
 		else delete process.env.PLANNOTATOR_REVIEW_URL;
@@ -290,6 +292,8 @@ export default function plannotator(pi: ExtensionAPI): void {
 
 	pi.on("session_shutdown", () => {
 		sessionAlive = false;
+		codeReviewStartGeneration += 1;
+		codeReviewStarting = false;
 		activeCodeReviewSession?.stop();
 		activeCodeReviewSession = null;
 		publishCodeReviewSession(null);
@@ -561,6 +565,10 @@ export default function plannotator(pi: ExtensionAPI): void {
 	const reviewStartCommand: Parameters<ExtensionAPI["registerCommand"]>[1] = {
 		description: "Start persistent code review; options: --base <ref>, --git, --gitbutler, --local, --no-local",
 		handler: async (args, ctx) => {
+			if (codeReviewStarting) {
+				ctx.ui.notify("Code review is already starting.", "info");
+				return;
+			}
 			if (activeCodeReviewSession) {
 				if (args?.trim()) {
 					ctx.ui.notify("A code review session is already active. Stop it before changing review options.", "error");
@@ -580,7 +588,11 @@ export default function plannotator(pi: ExtensionAPI): void {
 
 			currentPiSession.update(ctx);
 			const origin = getPiSessionIdentity(ctx);
+			const startGeneration = ++codeReviewStartGeneration;
+			codeReviewStarting = true;
+			ctx.ui.notify("Starting code review...", "info");
 
+			void (async () => {
 			try {
 				const { parseReviewArgs } = await import("./generated/review-args.ts");
 				const reviewArgs = parseReviewArgs(args ?? "");
@@ -591,6 +603,11 @@ export default function plannotator(pi: ExtensionAPI): void {
 					useLocal: reviewArgs.useLocal,
 					persistentFeedback: true,
 				});
+				if (startGeneration !== codeReviewStartGeneration) {
+					session.stop();
+					return;
+				}
+				codeReviewStarting = false;
 				activeCodeReviewSession = session;
 				publishCodeReviewSession(session);
 				ctx.ui.notify(sessionOpenedMessage("Code review opened", session.url), "info");
@@ -681,17 +698,25 @@ export default function plannotator(pi: ExtensionAPI): void {
 					}
 				})();
 			} catch (err) {
+				if (startGeneration === codeReviewStartGeneration) codeReviewStarting = false;
 				ctx.ui.notify(
 					`Failed to start code review UI: ${getStartupErrorMessage(err)}`,
 					"error",
 				);
 			}
+			})();
 		},
 	};
 	pi.registerCommand("review-start", reviewStartCommand);
 	pi.registerCommand("review-stop", {
 		description: "Stop the active code review browser session",
 		handler: async (_args, ctx) => {
+			if (codeReviewStarting) {
+				codeReviewStartGeneration += 1;
+				codeReviewStarting = false;
+				ctx.ui.notify("Code review start canceled.", "info");
+				return;
+			}
 			if (!activeCodeReviewSession) {
 				ctx.ui.notify("No active code review session.", "warning");
 				return;
