@@ -305,7 +305,7 @@ const ReviewApp: React.FC = () => {
   // description card + collapsed seeding on the all-files surface.
   const [commitInfo, setCommitInfo] = useState<CommitDiffInfo | null>(null);
   // The local origin/<default> tracking ref is behind the actual remote —
-  // the "Baseline is behind GitHub · Fetch" banner.
+   // the "Review base is behind remote · Fetch" banner.
   const [baseBehindRemote, setBaseBehindRemote] = useState(false);
   // Server snapshot id (draftKey) for the diff this client is RENDERING.
   // Echoed on every freshness probe so the server can answer per-client:
@@ -2078,7 +2078,7 @@ const ReviewApp: React.FC = () => {
     onBaseBehindRemote: setBaseBehindRemote,
   });
 
-  // "Baseline is behind GitHub · Fetch" — fetch the remote default branch,
+  // "Review base is behind remote · Fetch" — fetch the remote default branch,
   // then recompute the current diff in place (preserving the active file).
   // Live diff selection for async completions that must detect "the user
   // moved on" (see handleFetchBase). Updated every render.
@@ -3076,12 +3076,12 @@ const ReviewApp: React.FC = () => {
 
                 {/* Baseline staleness — origin/<default> is behind the actual
                     remote, so the "since main" comparison is against stale
-                    GitHub state. Fetch catches the tracking ref up and
+                    remote state. Fetch catches the tracking ref up and
                     recomputes the diff in place. */}
                 {baseBehindRemote && !prMetadata && !isLoadingDiff && (
                   <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300 px-2 py-1 bg-amber-500/10 rounded border border-amber-500/25">
-                    <span className="hidden md:inline">Baseline is behind GitHub</span>
-                    <span className="md:hidden">Base behind</span>
+                    <span className="hidden md:inline">Review base is behind remote</span>
+                    <span className="md:hidden">Base behind remote</span>
                     {isFetchingBase ? (
                       <span className="flex items-center gap-1.5 font-medium">
                         <span className="inline-block w-3 h-3 border-[1.5px] border-current border-t-transparent rounded-full animate-spin" aria-hidden />
