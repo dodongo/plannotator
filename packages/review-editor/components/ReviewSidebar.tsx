@@ -322,7 +322,7 @@ export const ReviewSidebar: React.FC<ReviewSidebarProps> = /* React.memo */({
             <div className="text-[9px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
               Agent response
             </div>
-            <div className="text-xs text-foreground/80 review-comment-markdown">
+            <div className="review-comment-agent-response text-xs text-foreground/80 review-comment-markdown">
               {renderInlineMarkdown(status.note)}
             </div>
           </div>

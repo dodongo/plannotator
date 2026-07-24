@@ -234,6 +234,17 @@ diffs-container {
   word-break: break-word;
 }
 
+/* Diff slots may impose preformatted, non-wrapping text on their descendants.
+   Reset that here so agent notes stay inside both inline and sidebar cards. */
+.review-comment-agent-response {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 /* Inline markdown in review comments */
 .review-comment-body .inline-code,
 .review-comment-markdown .inline-code {

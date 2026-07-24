@@ -74,7 +74,7 @@ export const InlineAnnotation: React.FC<InlineAnnotationProps> = ({
           <div className="text-[9px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
             Agent response
           </div>
-          <div className="text-xs text-foreground/80 review-comment-markdown">
+          <div className="review-comment-agent-response text-xs text-foreground/80 review-comment-markdown">
             {renderInlineMarkdown(reviewStatus.note)}
           </div>
         </div>
