@@ -12,7 +12,7 @@
  * - Writes restricted to markdown files inside cwd during planning
  * - plannotator_submit_plan tool with browser-based visual approval
  * - [DONE:n] markers for execution progress tracking
- * - /plannotator-review command for code review
+ * - /review and /plannotator-review commands for code review
  * - /plannotator-annotate command for markdown annotation
  */
 
@@ -550,7 +550,7 @@ export default function plannotator(pi: ExtensionAPI): void {
 		},
 	});
 
-	pi.registerCommand("plannotator-review", {
+	const codeReviewCommand: Parameters<ExtensionAPI["registerCommand"]>[1] = {
 		description: "Open interactive code review for current changes or a PR URL; pass --git or --gitbutler to force that provider",
 		handler: async (args, ctx) => {
 			if (!hasReviewBrowserHtml()) {
@@ -627,7 +627,9 @@ export default function plannotator(pi: ExtensionAPI): void {
 				);
 			}
 		},
-	});
+	};
+	pi.registerCommand("review", codeReviewCommand);
+	pi.registerCommand("plannotator-review", codeReviewCommand);
 
 	pi.registerCommand("plannotator-annotate", {
 		description: "Open markdown file or folder in annotation UI",

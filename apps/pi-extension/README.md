@@ -171,6 +171,9 @@ Use these inside `systemPrompt` strings:
 
 ### Code review
 
+Use <code>/review</code> as the short Pi command for the same current-session
+code review opened by the full Plannotator command.
+
 Run `/plannotator-review` to open your current VCS changes in the code review UI. Annotate specific lines, switch between the modes supported by the detected Git, GitButler, or JJ provider, and submit feedback that gets sent to the agent. Pass `--git` or `--gitbutler` to force that provider; GitButler requires `but` 0.21.0 or newer on `PATH`.
 
 ### Shared Plannotator event API
