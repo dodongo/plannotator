@@ -67,6 +67,11 @@ session from Pi with:
 
     /review-stop
 
+Submitted comments remain pending in the browser. After fully handling a
+comment, use plannotator_mark_review_comments_addressed with the stable ID from
+the feedback message. Do not mark confirmed comments that still await user
+discussion or code changes.
+
 ## Take the latest stable extension
 
 Start with a clean, committed dg/custom branch, then run:

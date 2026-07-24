@@ -82,6 +82,7 @@ type CodeReviewDecision = {
 	approved: boolean;
 	feedback?: string;
 	annotations?: unknown[];
+	commentIds?: string[];
 	agentSwitch?: string;
 	exit?: boolean;
 };

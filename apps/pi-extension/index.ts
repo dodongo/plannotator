@@ -625,6 +625,19 @@ export default function plannotator(pi: ExtensionAPI): void {
 								const { getReviewDeniedSuffix } = await loadPlannotatorPrompts();
 								reviewFeedback += getReviewDeniedSuffix("pi", loadConfig());
 							}
+							if ((result.commentIds?.length ?? 0) > 0) {
+								const annotations = (result.annotations ?? []) as Array<{ id?: string; filePath?: string; lineStart?: number }>;
+								const annotationById = new Map(annotations.map((annotation) => [annotation.id, annotation]));
+								const commentRefs = result.commentIds!.map((id) => {
+									const annotation = annotationById.get(id);
+									const location = annotation?.filePath
+										? annotation.filePath + (annotation.lineStart ? ":" + annotation.lineStart : "")
+										: "review comment";
+									return "- " + id + " — " + location;
+								});
+								reviewFeedback += "\n\nPlannotator comment IDs:\n" + commentRefs.join("\n");
+								reviewFeedback += "\nAfter a comment is fully handled, call plannotator_mark_review_comments_addressed with its ID. A validated Not a bug or Intended verdict counts as handled; a confirmed issue awaiting discussion or a code change does not.";
+							}
 							sendUserMessageWithCurrentSessionFallback(
 								pi,
 								reviewFeedback,
@@ -632,7 +645,21 @@ export default function plannotator(pi: ExtensionAPI): void {
 								"Plannotator code review feedback could not be sent",
 								origin,
 							);
+							if ((result.commentIds?.length ?? 0) > 0) {
+								await fetch(session.url + "/api/feedback-delivery", {
+									method: "POST",
+									headers: { "Content-Type": "application/json" },
+									body: JSON.stringify({ commentIds: result.commentIds, delivered: true }),
+								});
+							}
 						} catch (err) {
+							if ((result.commentIds?.length ?? 0) > 0) {
+								void fetch(session.url + "/api/feedback-delivery", {
+									method: "POST",
+									headers: { "Content-Type": "application/json" },
+									body: JSON.stringify({ commentIds: result.commentIds, delivered: false }),
+								});
+							}
 							reportBackgroundError(ctx, "Plannotator code review feedback could not be sent", err, origin);
 						}
 						}
@@ -954,6 +981,44 @@ export default function plannotator(pi: ExtensionAPI): void {
 		description: "Toggle plannotator",
 		handler: async (ctx) => {
 			await togglePlanMode(ctx);
+		},
+	});
+
+	pi.registerTool({
+		name: "plannotator_mark_review_comments_addressed",
+		label: "Mark Review Comments Addressed",
+		description: "Mark submitted Plannotator review comments as addressed. Use only after validating and fully handling each listed comment ID. Do not mark confirmed comments that still await discussion or code changes.",
+		parameters: Type.Object({
+			commentIds: Type.Array(Type.String(), {
+				description: "Stable Plannotator comment IDs that are fully handled.",
+				minItems: 1,
+			}),
+			note: Type.Optional(Type.String({
+				description: "Short result shown with the addressed comments.",
+			})),
+		}) as any,
+		async execute(_toolCallId, params) {
+			if (!activeCodeReviewSession) {
+				throw new Error("No active Plannotator code review session.");
+			}
+			const input = params as { commentIds?: string[]; note?: string };
+			const commentIds = input.commentIds?.map((id) => id.trim()).filter(Boolean) ?? [];
+			if (commentIds.length === 0) {
+				throw new Error("At least one review comment ID is required.");
+			}
+			const response = await fetch(activeCodeReviewSession.url + "/api/feedback-address", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ commentIds, note: input.note }),
+			});
+			if (!response.ok) {
+				const body = await response.text();
+				throw new Error(body || "Failed to mark review comments addressed.");
+			}
+			return {
+				content: [{ type: "text", text: "Marked review comments addressed: " + commentIds.join(", ") }],
+				details: { commentIds, addressed: true },
+			};
 		},
 	});
 

@@ -1181,6 +1181,7 @@ describe("pi review server", () => {
       diffType: "uncommitted",
       gitContext,
       origin: "pi",
+      persistentFeedback: true,
       htmlContent: "<!doctype html><html><body>review</body></html>",
     });
 
@@ -1192,9 +1193,11 @@ describe("pi review server", () => {
         snapshotId: string;
         gitContext?: { diffOptions: Array<{ id: string }> };
         origin?: string;
+        persistentFeedback?: boolean;
         repoInfo?: { display: string };
       };
       expect(diffPayload.origin).toBe("pi");
+      expect(diffPayload.persistentFeedback).toBe(true);
       expect(diffPayload.rawPatch).toContain("diff --git a/untracked.txt b/untracked.txt");
       expect(diffPayload.gitContext?.diffOptions.map((option) => option.id)).toEqual(
         expect.arrayContaining(["uncommitted", "staged", "unstaged", "last-commit"]),
@@ -1312,8 +1315,36 @@ describe("pi review server", () => {
         approved: false,
         feedback: "Please update the diff",
         annotations: [{ id: "note-1" }],
+        commentIds: ["note-1"],
         agentSwitch: undefined,
       });
+
+      const earlyAddress = await fetch(server.url + "/api/feedback-address", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commentIds: ["note-1"] }),
+      });
+      expect(earlyAddress.status).toBe(409);
+
+      const delivered = await fetch(server.url + "/api/feedback-delivery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commentIds: ["note-1"], delivered: true }),
+      });
+      expect(delivered.status).toBe(200);
+
+      const addressed = await fetch(server.url + "/api/feedback-address", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commentIds: ["note-1"], note: "Updated" }),
+      });
+      expect(addressed.status).toBe(200);
+      const statusPayload = await fetch(server.url + "/api/feedback-status").then((response) => response.json()) as {
+        statuses: Array<{ id: string; state: string; note?: string }>;
+        annotations: Array<{ id: string }>;
+      };
+      expect(statusPayload.statuses).toContainEqual({ id: "note-1", state: "addressed", note: "Updated" });
+      expect(statusPayload.annotations).toContainEqual({ id: "note-1" });
 
       const followUpResponse = await fetch(server.url + "/api/feedback", {
         method: "POST",
@@ -1329,6 +1360,7 @@ describe("pi review server", () => {
         approved: false,
         feedback: "Please update it again",
         annotations: [{ id: "note-2" }],
+        commentIds: ["note-2"],
         agentSwitch: undefined,
       });
     } finally {

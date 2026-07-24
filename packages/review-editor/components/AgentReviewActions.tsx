@@ -3,6 +3,7 @@ import { FeedbackButton, ApproveButton, ExitButton } from '@plannotator/ui/compo
 
 interface AgentReviewActionsProps {
   totalAnnotationCount: number;
+  unresolvedAnnotationCount?: number;
   isSendingFeedback: boolean;
   isApproving: boolean;
   isExiting: boolean;
@@ -24,6 +25,7 @@ interface AgentReviewActionsProps {
  */
 export const AgentReviewActions: React.FC<AgentReviewActionsProps> = ({
   totalAnnotationCount,
+  unresolvedAnnotationCount = 0,
   isSendingFeedback,
   isApproving,
   isExiting,
@@ -59,10 +61,10 @@ export const AgentReviewActions: React.FC<AgentReviewActionsProps> = ({
       <div className="relative group/approve inline-flex items-center">
         <ApproveButton
           onClick={onApprove}
-          disabled={busy}
+          disabled={busy || unresolvedAnnotationCount > 0}
           isLoading={isApproving}
-          dimmed={totalAnnotationCount > 0}
-          title="Approve - no changes needed"
+          dimmed={totalAnnotationCount > 0 || unresolvedAnnotationCount > 0}
+          title={unresolvedAnnotationCount > 0 ? "Wait for the agent to address submitted comments" : "Approve - no changes needed"}
           labelBreakpoint="lg"
         />
         {totalAnnotationCount > 0 && (

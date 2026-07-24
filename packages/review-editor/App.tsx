@@ -133,6 +133,11 @@ interface DiffData {
   semanticDiff?: SemanticDiffAdvert;
 }
 
+type ReviewCommentStatus = {
+  state: 'sending' | 'submitted' | 'addressed' | 'failed';
+  note?: string;
+};
+
 function getFileTabTitle(filePath: string): string {
   return filePath.split('/').pop() ?? filePath;
 }
@@ -339,6 +344,7 @@ const ReviewApp: React.FC = () => {
   const [isExiting, setIsExiting] = useState(false);
   const [submitted, setSubmitted] = useState<'approved' | 'feedback' | 'exited' | false>(false);
   const [persistentFeedback, setPersistentFeedback] = useState(false);
+  const [reviewCommentStatuses, setReviewCommentStatuses] = useState<Record<string, ReviewCommentStatus>>({});
   const [showApproveWarning, setShowApproveWarning] = useState(false);
   const [showExitWarning, setShowExitWarning] = useState(false);
   const [sharingEnabled, setSharingEnabled] = useState(true);
@@ -347,6 +353,40 @@ const ReviewApp: React.FC = () => {
   useEffect(() => {
     document.title = repoInfo ? `${repoInfo.display} · Code Review` : "Code Review";
   }, [repoInfo]);
+
+  useEffect(() => {
+    if (!persistentFeedback) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const poll = async () => {
+      try {
+        const response = await fetch('/api/feedback-status');
+        if (response.ok && !cancelled) {
+          const data = await response.json() as {
+            statuses?: Array<{ id: string; state: 'sending' | 'submitted' | 'addressed' | 'failed'; note?: string }>;
+            annotations?: CodeAnnotation[];
+          };
+          const statuses: Record<string, ReviewCommentStatus> = {};
+          for (const status of data.statuses ?? []) statuses[status.id] = { state: status.state, note: status.note };
+          setReviewCommentStatuses(statuses);
+          if ((data.annotations?.length ?? 0) > 0) {
+            setAnnotations((current) => {
+              const existing = new Set(current.map((annotation) => annotation.id));
+              return [...current, ...data.annotations!.filter((annotation) => !existing.has(annotation.id))];
+            });
+          }
+        }
+      } catch {
+        // The next poll retries while the review server remains available.
+      }
+      if (!cancelled) timer = setTimeout(poll, 1500);
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [persistentFeedback]);
 
   const { prMetadata, prStackInfo, prStackTree, prDiffScope, prDiffScopeOptions, prPatchIncomplete, prPatchUpgradeAvailable, updatePRSession } = usePRSession();
 
@@ -1533,6 +1573,7 @@ const ReviewApp: React.FC = () => {
     conventionalLabel?: ConventionalLabel | null,
     decorations?: ConventionalDecoration[],
   ) => {
+    if (reviewCommentStatuses[id] && reviewCommentStatuses[id].state !== 'failed') return;
     const ann = allAnnotationsRef.current.find(a => a.id === id);
     const updates: Partial<CodeAnnotation> = {
       ...(text !== undefined && { text }),
@@ -1549,7 +1590,7 @@ const ReviewApp: React.FC = () => {
     setAnnotations(prev => prev.map(a =>
       a.id === id ? { ...a, ...updates } : a
     ));
-  }, [updateExternalAnnotation, externalAnnotations]);
+  }, [updateExternalAnnotation, externalAnnotations, reviewCommentStatuses]);
 
   // selectedAnnotationId is cleared via a functional update (not a captured
   // value): this handler is captured by Pierre slot portals (inline annotation
@@ -1557,6 +1598,7 @@ const ReviewApp: React.FC = () => {
   // the state value goes stale and would leave a dangling selection id after
   // deleting the currently-selected annotation.
   const handleDeleteAnnotation = useCallback((id: string) => {
+    if (reviewCommentStatuses[id] && reviewCommentStatuses[id].state !== 'failed') return;
     const ann = allAnnotationsRef.current.find(a => a.id === id);
     if (ann?.source && externalAnnotations.some(e => e.id === id)) {
       deleteExternalAnnotation(id);
@@ -1565,7 +1607,7 @@ const ReviewApp: React.FC = () => {
     }
     setAnnotations(prev => prev.filter(a => a.id !== id));
     setSelectedAnnotationId(prev => (prev === id ? null : prev));
-  }, [deleteExternalAnnotation, externalAnnotations]);
+  }, [deleteExternalAnnotation, externalAnnotations, reviewCommentStatuses]);
 
   // Handle identity change - update author on existing annotations
   const handleIdentityChange = useCallback((oldIdentity: string, newIdentity: string) => {
@@ -2475,26 +2517,59 @@ const ReviewApp: React.FC = () => {
     }
   }, [diffData]);
 
+  const draftAnnotations = useMemo(
+    () => allAnnotations.filter((annotation) => !reviewCommentStatuses[annotation.id] || reviewCommentStatuses[annotation.id].state === 'failed'),
+    [allAnnotations, reviewCommentStatuses],
+  );
+  const draftEditorAnnotations = useMemo(
+    () => visibleEditorAnnotations.filter((annotation) => !reviewCommentStatuses[annotation.id] || reviewCommentStatuses[annotation.id].state === 'failed'),
+    [visibleEditorAnnotations, reviewCommentStatuses],
+  );
+  const draftDescriptionAnnotations = useMemo(
+    () => visibleDescriptionAnnotations.filter((annotation) => !reviewCommentStatuses[annotation.id] || reviewCommentStatuses[annotation.id].state === 'failed'),
+    [visibleDescriptionAnnotations, reviewCommentStatuses],
+  );
+  const draftCommentAnnotations = useMemo(
+    () => visibleCommentAnnotations.filter((annotation) => !reviewCommentStatuses[annotation.id] || reviewCommentStatuses[annotation.id].state === 'failed'),
+    [visibleCommentAnnotations, reviewCommentStatuses],
+  );
+
   const feedbackMarkdown = useMemo(() => {
     // Only include the code-review section when there ARE code annotations —
     // otherwise exportReviewFeedback([]) prepends "No feedback provided." ahead
     // of the description/comment notes, which contradicts them.
     const parts: string[] = [];
-    if (allAnnotations.length > 0) {
-      parts.push(exportReviewFeedback(allAnnotations, prMetadata, feedbackDiffContext, prReviewScopeLabel));
+    if (draftAnnotations.length > 0) {
+      parts.push(exportReviewFeedback(draftAnnotations, prMetadata, feedbackDiffContext, prReviewScopeLabel));
     }
-    if (visibleEditorAnnotations.length > 0) {
-      parts.push(exportEditorAnnotations(visibleEditorAnnotations).trim());
+    if (draftEditorAnnotations.length > 0) {
+      parts.push(exportEditorAnnotations(draftEditorAnnotations).trim());
     }
-    const prose = buildProseFeedback(visibleDescriptionAnnotations, visibleCommentAnnotations, prContext?.body);
+    const prose = buildProseFeedback(draftDescriptionAnnotations, draftCommentAnnotations, prContext?.body);
     if (prose) parts.push(prose);
     // Fall back to the standard "no feedback" message only when there's nothing.
     return parts.length > 0
       ? parts.join('\n\n')
       : exportReviewFeedback([], prMetadata, feedbackDiffContext, prReviewScopeLabel);
-  }, [allAnnotations, prMetadata, feedbackDiffContext, prReviewScopeLabel, visibleEditorAnnotations, visibleDescriptionAnnotations, prContext?.body, visibleCommentAnnotations]);
+  }, [draftAnnotations, prMetadata, feedbackDiffContext, prReviewScopeLabel, draftEditorAnnotations, draftDescriptionAnnotations, prContext?.body, draftCommentAnnotations]);
 
-  const totalAnnotationCount = allAnnotations.length + visibleEditorAnnotations.length + visibleDescriptionAnnotations.length + visibleCommentAnnotations.length;
+  const totalAnnotationCount = draftAnnotations.length + draftEditorAnnotations.length + draftDescriptionAnnotations.length + draftCommentAnnotations.length;
+  const unresolvedAnnotationCount = Object.values(reviewCommentStatuses)
+    .filter((status) => status.state === 'sending' || status.state === 'submitted')
+    .length;
+  const previousUnresolvedCountRef = useRef(0);
+  const refreshAfterAddressRef = useRef(false);
+  useEffect(() => {
+    if (!persistentFeedback) return;
+    if (previousUnresolvedCountRef.current > 0 && unresolvedAnnotationCount === 0) {
+      refreshAfterAddressRef.current = true;
+    }
+    previousUnresolvedCountRef.current = unresolvedAnnotationCount;
+    if (refreshAfterAddressRef.current && diffFreshness.isStale && totalAnnotationCount === 0) {
+      refreshAfterAddressRef.current = false;
+      handleRefreshStaleDiff();
+    }
+  }, [persistentFeedback, unresolvedAnnotationCount, diffFreshness.isStale, totalAnnotationCount, handleRefreshStaleDiff]);
 
   // Copy the same full feedback the agent gets (code + editor + PR description +
   // PR comment notes), not just code annotations. Defined after feedbackMarkdown
@@ -2525,6 +2600,12 @@ const ReviewApp: React.FC = () => {
     try {
       const agentSwitchSettings = getAgentSwitchSettings('review');
       const effectiveAgent = getEffectiveAgentName(agentSwitchSettings);
+      const commentIds = [
+        ...draftAnnotations,
+        ...draftEditorAnnotations,
+        ...draftDescriptionAnnotations,
+        ...draftCommentAnnotations,
+      ].map((annotation) => annotation.id);
 
       const res = await fetch('/api/feedback', {
         method: 'POST',
@@ -2533,18 +2614,22 @@ const ReviewApp: React.FC = () => {
           draftGeneration: getDraftGeneration(),
           approved: false,
           feedback: feedbackMarkdown,
-          annotations: allAnnotations,
+          annotations: draftAnnotations,
+          commentIds,
           ...(effectiveAgent && { agentSwitch: effectiveAgent }),
         }),
       });
       if (res.ok) {
         if (persistentFeedback) {
           dismissDraft();
-          setAnnotations([]);
-          setDescriptionAnnotations([]);
-          setCommentAnnotations([]);
+          const data = await res.json() as { commentIds?: string[] };
+          setReviewCommentStatuses((current) => {
+            const next = { ...current };
+            for (const id of data.commentIds ?? commentIds) next[id] = { state: 'sending' };
+            return next;
+          });
           setIsSendingFeedback(false);
-          toast.success('Feedback sent to Pi');
+          toast('Feedback accepted; sending to Pi');
         } else {
           setSubmitted('feedback');
         }
@@ -2557,7 +2642,7 @@ const ReviewApp: React.FC = () => {
       setTimeout(() => setCopyFeedback(null), 2000);
       setIsSendingFeedback(false);
     }
-  }, [totalAnnotationCount, feedbackMarkdown, allAnnotations, getDraftGeneration, persistentFeedback, dismissDraft]);
+  }, [totalAnnotationCount, feedbackMarkdown, draftAnnotations, draftEditorAnnotations, draftDescriptionAnnotations, draftCommentAnnotations, getDraftGeneration, persistentFeedback, dismissDraft]);
 
   // Exit review session without sending any feedback
   const handleExit = useCallback(async () => {
@@ -2577,6 +2662,10 @@ const ReviewApp: React.FC = () => {
 
   // Approve without feedback (LGTM)
   const handleApprove = useCallback(async () => {
+    if (persistentFeedback && unresolvedAnnotationCount > 0) {
+      toast('Wait for the agent to address submitted comments');
+      return;
+    }
     setIsApproving(true);
     try {
       const res = await fetch('/api/feedback', {
@@ -2600,7 +2689,7 @@ const ReviewApp: React.FC = () => {
       setTimeout(() => setCopyFeedback(null), 2000);
       setIsApproving(false);
     }
-  }, [getDraftGeneration]);
+  }, [getDraftGeneration, persistentFeedback, unresolvedAnnotationCount]);
 
   // Submit reviews to one or more PRs via /api/pr-action
   const handlePlatformAction = useCallback(async (action: 'approve' | 'comment', plan: ReviewSubmission, generalComment?: string) => {
@@ -3115,7 +3204,8 @@ const ReviewApp: React.FC = () => {
                 {/* Agent mode: Close/SendFeedback flip + Approve */}
                 {!platformMode ? (
                   <AgentReviewActions
-                    totalAnnotationCount={totalAnnotationCount}
+                     totalAnnotationCount={totalAnnotationCount}
+                     unresolvedAnnotationCount={unresolvedAnnotationCount}
                     isSendingFeedback={isSendingFeedback}
                     isApproving={isApproving}
                     isExiting={isExiting}
@@ -3554,6 +3644,7 @@ const ReviewApp: React.FC = () => {
                 onClose={reviewSidebar.close}
                 activeTab={reviewSidebar.activeTab}
                 annotations={allAnnotations}
+                annotationStatuses={reviewCommentStatuses}
                 files={files}
                 selectedAnnotationId={selectedAnnotationId}
                 onSelectAnnotation={handleSelectAnnotation}

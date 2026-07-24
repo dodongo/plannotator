@@ -26,6 +26,7 @@ interface ReviewSidebarProps {
   onClose: () => void;
   activeTab: ReviewSidebarTab;
   annotations: CodeAnnotation[];
+  annotationStatuses?: Record<string, { state: 'sending' | 'submitted' | 'addressed' | 'failed'; note?: string }>;
   files: DiffFile[];
   selectedAnnotationId: string | null;
   onSelectAnnotation: (id: string | null) => void;
@@ -132,6 +133,7 @@ export const ReviewSidebar: React.FC<ReviewSidebarProps> = /* React.memo */({
   onClose,
   activeTab,
   annotations,
+  annotationStatuses = {},
   files,
   selectedAnnotationId,
   onSelectAnnotation,
@@ -178,6 +180,7 @@ export const ReviewSidebar: React.FC<ReviewSidebarProps> = /* React.memo */({
 }) => {
   const totalCount = annotations.length + (editorAnnotations?.length ?? 0) + (descriptionAnnotations?.length ?? 0) + (commentAnnotations?.length ?? 0);
   const [copied, setCopied] = useState(false);
+  const [expandedAddressedIds, setExpandedAddressedIds] = useState<Set<string>>(new Set());
 
   const handleQuickCopy = async () => {
     if (!feedbackMarkdown) return;
@@ -239,13 +242,26 @@ export const ReviewSidebar: React.FC<ReviewSidebarProps> = /* React.memo */({
 
   function renderAnnotationCard(annotation: CodeAnnotation) {
     const isSelected = selectedAnnotationId === annotation.id;
+    const status = annotationStatuses[annotation.id];
+    const addressedCollapsed = status?.state === 'addressed' && !expandedAddressedIds.has(annotation.id);
     const scope = getAnnotationScope(annotation);
     const isFileScope = scope === 'file';
     const isGeneralScope = scope === 'general';
     return (
       <div
         key={annotation.id}
-        onClick={() => onNavigateToAnnotation(annotation.id)}
+        onClick={() => {
+          if (status?.state === 'addressed') {
+            setExpandedAddressedIds((current) => {
+              const next = new Set(current);
+              if (next.has(annotation.id)) next.delete(annotation.id);
+              else next.add(annotation.id);
+              return next;
+            });
+          } else {
+            onNavigateToAnnotation(annotation.id);
+          }
+        }}
         className={`group relative p-2.5 rounded border cursor-pointer transition-colors duration-150 ${
           isSelected
             ? 'bg-primary/5 border-primary/30'
@@ -278,19 +294,37 @@ export const ReviewSidebar: React.FC<ReviewSidebarProps> = /* React.memo */({
           author={annotation.author}
           createdAt={annotation.createdAt}
         />
-        {annotation.text && (
+        {status && (
+          <div
+            className={status.state === 'addressed'
+              ? 'mb-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400'
+              : status.state === 'failed'
+                ? 'mb-1 text-[10px] font-medium text-red-600 dark:text-red-400'
+                : 'mb-1 text-[10px] font-medium text-amber-600 dark:text-amber-400'}
+            title={status.note}
+          >
+            {status.state === 'addressed'
+              ? addressedCollapsed ? 'Addressed by agent · show' : 'Addressed by agent · hide'
+              : status.state === 'failed'
+                ? 'Delivery failed — send again'
+                : status.state === 'sending'
+                  ? 'Sending to Pi'
+                  : 'Waiting for agent'}
+          </div>
+        )}
+        {annotation.text && !addressedCollapsed && (
           <div className="text-xs text-foreground/80 line-clamp-2 review-comment-markdown">
             {renderInlineMarkdown(annotation.text)}
           </div>
         )}
-        {annotation.suggestedCode && !isGeneralScope && (
+        {annotation.suggestedCode && !isGeneralScope && !addressedCollapsed && (
           <div className="mt-1.5">
             <SuggestionPreview code={annotation.suggestedCode} originalCode={annotation.originalCode} language={detectLanguage(annotation.filePath)} />
           </div>
         )}
         <CommentActions
           copyText={annotation.text ? commentCopyText(annotation, scope) : undefined}
-          onDelete={() => onDeleteAnnotation(annotation.id)}
+          onDelete={status && status.state !== 'failed' ? undefined : () => onDeleteAnnotation(annotation.id)}
         />
       </div>
     );

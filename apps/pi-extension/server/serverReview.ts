@@ -232,6 +232,7 @@ export interface ReviewDecision {
 	approved: boolean;
 	feedback: string;
 	annotations: unknown[];
+	commentIds?: string[];
 	agentSwitch?: string;
 	exit?: boolean;
 }
@@ -1363,6 +1364,8 @@ export async function startReviewServer(options: {
 		(options.pasteApiUrl ?? process.env.PLANNOTATOR_PASTE_URL) || undefined;
 	const pendingDecisions: ReviewDecision[] = [];
 	const decisionWaiters: Array<(result: ReviewDecision) => void> = [];
+	const feedbackStatuses = new Map<string, { state: "sending" | "submitted" | "addressed" | "failed"; note?: string }>();
+	const feedbackAnnotations = new Map<string, unknown>();
 	const resolveDecision = (result: ReviewDecision): void => {
 		const waiter = decisionWaiters.shift();
 		if (waiter) waiter(result);
@@ -2716,17 +2719,74 @@ export async function startReviewServer(options: {
 			deleteDraft(draftKey, readDraftGenerationFromUrl(req));
 			resolveDecision({ approved: false, feedback: '', annotations: [], exit: true });
 			json(res, { ok: true });
+		} else if (url.pathname === "/api/feedback-status" && req.method === "GET") {
+			json(res, {
+				statuses: [...feedbackStatuses].map(([id, status]) => ({ id, ...status })),
+				annotations: [...feedbackAnnotations.values()],
+			});
+		} else if (url.pathname === "/api/feedback-address" && req.method === "POST") {
+			const body = await parseBody(req);
+			const ids = Array.isArray(body.commentIds)
+				? body.commentIds.filter((id): id is string => typeof id === "string" && id.length > 0)
+				: [];
+			if (ids.length === 0) {
+				json(res, { error: "commentIds must contain at least one comment ID" }, 400);
+				return;
+			}
+			const unknown = ids.filter((id) => !feedbackStatuses.has(id));
+			if (unknown.length > 0) {
+				json(res, { error: "Unknown review comment IDs", unknown }, 404);
+				return;
+			}
+			const undelivered = ids.filter((id) => feedbackStatuses.get(id)?.state === "sending" || feedbackStatuses.get(id)?.state === "failed");
+			if (undelivered.length > 0) {
+				json(res, { error: "Review comments have not been delivered to Pi", undelivered }, 409);
+				return;
+			}
+			const note = typeof body.note === "string" && body.note.trim() ? body.note.trim() : undefined;
+			for (const id of ids) feedbackStatuses.set(id, { state: "addressed", ...(note && { note }) });
+			json(res, { ok: true, commentIds: ids });
+		} else if (url.pathname === "/api/feedback-delivery" && req.method === "POST") {
+			const body = await parseBody(req);
+			const ids = Array.isArray(body.commentIds)
+				? body.commentIds.filter((id): id is string => typeof id === "string" && id.length > 0)
+				: [];
+			const delivered = body.delivered === true;
+			for (const id of ids) {
+				const current = feedbackStatuses.get(id);
+				if (current?.state !== "addressed") {
+					feedbackStatuses.set(id, { state: delivered ? "submitted" : "failed" });
+				}
+			}
+			json(res, { ok: true, commentIds: ids, delivered });
 		} else if (url.pathname === "/api/feedback" && req.method === "POST") {
 			try {
 				const body = await parseBody(req);
 				deleteDraft(draftKey, readDraftGenerationFromBody(body));
+				const annotations = (body.annotations as unknown[]) || [];
+				const annotationIds = annotations
+					.map((annotation) => annotation && typeof annotation === "object" && "id" in annotation ? (annotation as { id?: unknown }).id : undefined)
+					.filter((id): id is string => typeof id === "string" && id.length > 0);
+				for (const annotation of annotations) {
+					if (annotation && typeof annotation === "object" && "id" in annotation) {
+						const id = (annotation as { id?: unknown }).id;
+						if (typeof id === "string" && id.length > 0) feedbackAnnotations.set(id, annotation);
+					}
+				}
+				const commentIds = Array.isArray(body.commentIds)
+					? body.commentIds.filter((id): id is string => typeof id === "string" && id.length > 0)
+					: annotationIds;
+				for (const id of commentIds) {
+					feedbackStatuses.set(id, { state: "sending" });
+				}
 				resolveDecision({
 					approved: (body.approved as boolean) ?? false,
 					feedback: (body.feedback as string) || "",
-					annotations: (body.annotations as unknown[]) || [],
+					annotations,
+					...(options.persistentFeedback && { commentIds }),
 					agentSwitch: body.agentSwitch as string | undefined,
 				});
-				json(res, { ok: true });
+				json(res, { ok: true, commentIds });
 			} catch (err) {
 				const message = err instanceof Error ? err.message : "Failed to process feedback";
 				json(res, { error: message }, 500);
