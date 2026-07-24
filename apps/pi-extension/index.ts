@@ -278,6 +278,10 @@ export default function plannotator(pi: ExtensionAPI): void {
 	/** Latch: no provider found, or one sync failed. Cleared on return to idle. */
 	let todoProviderDisabled = false;
 	let activeCodeReviewSession: Awaited<ReturnType<typeof startCodeReviewBrowserSession>> | null = null;
+	const publishCodeReviewSession = (session: typeof activeCodeReviewSession) => {
+		if (session) process.env.PLANNOTATOR_REVIEW_URL = session.url;
+		else delete process.env.PLANNOTATOR_REVIEW_URL;
+	};
 
 	pi.on("session_start", (_event, ctx) => {
 		sessionAlive = true;
@@ -288,6 +292,7 @@ export default function plannotator(pi: ExtensionAPI): void {
 		sessionAlive = false;
 		activeCodeReviewSession?.stop();
 		activeCodeReviewSession = null;
+		publishCodeReviewSession(null);
 		currentPiSession.clear();
 	});
 
@@ -587,6 +592,7 @@ export default function plannotator(pi: ExtensionAPI): void {
 					persistentFeedback: true,
 				});
 				activeCodeReviewSession = session;
+				publishCodeReviewSession(session);
 				ctx.ui.notify(sessionOpenedMessage("Code review opened", session.url), "info");
 				void (async () => {
 					try {
@@ -595,12 +601,14 @@ export default function plannotator(pi: ExtensionAPI): void {
 							if (activeCodeReviewSession !== session) return;
 							if (result.exit) {
 								activeCodeReviewSession = null;
+								publishCodeReviewSession(null);
 								session.stop();
 								safeNotify(ctx, "Code review session closed.", "info", origin);
 								return;
 							}
 							if (result.approved) {
 								activeCodeReviewSession = null;
+								publishCodeReviewSession(null);
 								session.stop();
 								const { getReviewApprovedPrompt } = await loadPlannotatorPrompts();
 								sendUserMessageWithCurrentSessionFallback(
@@ -636,7 +644,7 @@ export default function plannotator(pi: ExtensionAPI): void {
 									return "- " + id + " — " + location;
 								});
 								reviewFeedback += "\n\nPlannotator comment IDs:\n" + commentRefs.join("\n");
-								reviewFeedback += "\nAfter a comment is fully handled, call plannotator_mark_review_comments_addressed with its ID. A validated Not a bug or Intended verdict counts as handled; a confirmed issue awaiting discussion or a code change does not.";
+								reviewFeedback += "\nFollow the global plannotator skill to mark each fully handled comment addressed. A validated Not a bug or Intended verdict counts as handled; a confirmed issue awaiting discussion or a code change does not.";
 							}
 							sendUserMessageWithCurrentSessionFallback(
 								pi,
@@ -664,7 +672,10 @@ export default function plannotator(pi: ExtensionAPI): void {
 						}
 						}
 					} catch (err) {
-						if (activeCodeReviewSession === session) activeCodeReviewSession = null;
+						if (activeCodeReviewSession === session) {
+							activeCodeReviewSession = null;
+							publishCodeReviewSession(null);
+						}
 						session.stop();
 						reportBackgroundError(ctx, "Plannotator code review session failed", err, origin);
 					}
@@ -687,6 +698,7 @@ export default function plannotator(pi: ExtensionAPI): void {
 			}
 			activeCodeReviewSession.stop();
 			activeCodeReviewSession = null;
+			publishCodeReviewSession(null);
 			ctx.ui.notify("Code review session stopped.", "info");
 		},
 	});
@@ -981,44 +993,6 @@ export default function plannotator(pi: ExtensionAPI): void {
 		description: "Toggle plannotator",
 		handler: async (ctx) => {
 			await togglePlanMode(ctx);
-		},
-	});
-
-	pi.registerTool({
-		name: "plannotator_mark_review_comments_addressed",
-		label: "Mark Review Comments Addressed",
-		description: "Mark submitted Plannotator review comments as addressed. Use only after validating and fully handling each listed comment ID. Do not mark confirmed comments that still await discussion or code changes.",
-		parameters: Type.Object({
-			commentIds: Type.Array(Type.String(), {
-				description: "Stable Plannotator comment IDs that are fully handled.",
-				minItems: 1,
-			}),
-			note: Type.Optional(Type.String({
-				description: "Short result shown with the addressed comments.",
-			})),
-		}) as any,
-		async execute(_toolCallId, params) {
-			if (!activeCodeReviewSession) {
-				throw new Error("No active Plannotator code review session.");
-			}
-			const input = params as { commentIds?: string[]; note?: string };
-			const commentIds = input.commentIds?.map((id) => id.trim()).filter(Boolean) ?? [];
-			if (commentIds.length === 0) {
-				throw new Error("At least one review comment ID is required.");
-			}
-			const response = await fetch(activeCodeReviewSession.url + "/api/feedback-address", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ commentIds, note: input.note }),
-			});
-			if (!response.ok) {
-				const body = await response.text();
-				throw new Error(body || "Failed to mark review comments addressed.");
-			}
-			return {
-				content: [{ type: "text", text: "Marked review comments addressed: " + commentIds.join(", ") }],
-				details: { commentIds, addressed: true },
-			};
 		},
 	});
 
