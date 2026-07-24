@@ -23,6 +23,7 @@ interface FileTreeProps {
   onDoubleClickFile?: (index: number) => void;
   annotations: CodeAnnotation[];
   viewedFiles: Set<string>;
+  attentionFiles: Set<string>;
   onToggleViewed?: (filePath: string) => void;
   hideViewedFiles?: boolean;
   onToggleHideViewed?: () => void;
@@ -104,6 +105,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
   onDoubleClickFile,
   annotations,
   viewedFiles,
+  attentionFiles,
   onToggleViewed,
   hideViewedFiles = false,
   onToggleHideViewed,
@@ -563,6 +565,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
               onSelectFile={onSelectFile}
               onDoubleClickFile={onDoubleClickFile}
               viewedFiles={viewedFiles}
+              attentionFiles={attentionFiles}
               onToggleViewed={onToggleViewed}
               hideViewedFiles={hideViewedFiles}
               getAnnotationCount={getAnnotationCount}

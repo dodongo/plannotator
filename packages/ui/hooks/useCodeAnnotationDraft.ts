@@ -10,12 +10,16 @@ import type { CodeAnnotation, Annotation, CommentAnnotation } from '../types';
 import { getDraftTransport } from './useAnnotationDraft';
 
 const DEBOUNCE_MS = 500;
+const EMPTY_ATTENTION_FILES = new Set<string>();
+const EMPTY_FILE_REVIEW_REVISIONS: Record<string, string> = {};
 
 interface DraftData {
   codeAnnotations: CodeAnnotation[];
   descriptionAnnotations?: Annotation[];
   commentAnnotations?: CommentAnnotation[];
   viewedFiles?: string[];
+  attentionFiles?: string[];
+  fileReviewRevisions?: Record<string, string>;
   draftGeneration?: number;
   ts: number;
 }
@@ -40,13 +44,15 @@ interface UseCodeAnnotationDraftOptions {
   descriptionAnnotations?: Annotation[];
   commentAnnotations?: CommentAnnotation[];
   viewedFiles: Set<string>;
+  attentionFiles?: Set<string>;
+  fileReviewRevisions?: Record<string, string>;
   isApiMode: boolean;
   submitted: boolean;
 }
 
 interface UseCodeAnnotationDraftResult {
   draftBanner: { count: number; viewedCount: number; timeAgo: string } | null;
-  restoreDraft: () => { annotations: CodeAnnotation[]; descriptionAnnotations: Annotation[]; commentAnnotations: CommentAnnotation[]; viewedFiles: string[] };
+  restoreDraft: () => { annotations: CodeAnnotation[]; descriptionAnnotations: Annotation[]; commentAnnotations: CommentAnnotation[]; viewedFiles: string[]; attentionFiles: string[]; fileReviewRevisions: Record<string, string> };
   getDraftGeneration: () => number;
   dismissDraft: () => void;
 }
@@ -56,6 +62,8 @@ export function useCodeAnnotationDraft({
   descriptionAnnotations = [],
   commentAnnotations = [],
   viewedFiles,
+  attentionFiles = EMPTY_ATTENTION_FILES,
+  fileReviewRevisions = EMPTY_FILE_REVIEW_REVISIONS,
   isApiMode,
   submitted,
 }: UseCodeAnnotationDraftOptions): UseCodeAnnotationDraftResult {
@@ -89,7 +97,8 @@ export function useCodeAnnotationDraft({
         const annotationCount = (Array.isArray(data?.codeAnnotations) ? data.codeAnnotations.length : 0)
           + (Array.isArray(data?.descriptionAnnotations) ? data.descriptionAnnotations.length : 0)
           + (Array.isArray(data?.commentAnnotations) ? data.commentAnnotations.length : 0);
-        const viewedCount = Array.isArray(data?.viewedFiles) ? data.viewedFiles.length : 0;
+        const viewedCount = (Array.isArray(data?.viewedFiles) ? data.viewedFiles.length : 0)
+          + (Array.isArray(data?.attentionFiles) ? data.attentionFiles.length : 0);
         if (annotationCount > 0 || viewedCount > 0) {
           draftDataRef.current = data;
           setDraftBanner({
@@ -119,7 +128,7 @@ export function useCodeAnnotationDraft({
     //     via `allAnnotations` and have their own lifecycle, separate from the draft.
     if (annotations.some((a) => !a.source) || descriptionAnnotations.length > 0 || commentAnnotations.length > 0) hasHadAnnotationsRef.current = true;
 
-    const isEmpty = annotations.length === 0 && descriptionAnnotations.length === 0 && commentAnnotations.length === 0 && viewedFiles.size === 0;
+    const isEmpty = annotations.length === 0 && descriptionAnnotations.length === 0 && commentAnnotations.length === 0 && viewedFiles.size === 0 && attentionFiles.size === 0;
     // Leave the server alone for an empty state until the user has actually had
     // annotations this session. This preserves an unrestored draft sitting on disk
     // at mount (the draft-recovery banner can still offer it).
@@ -145,6 +154,8 @@ export function useCodeAnnotationDraft({
         descriptionAnnotations,
         commentAnnotations,
         viewedFiles: [...viewedFiles],
+        attentionFiles: [...attentionFiles],
+        fileReviewRevisions,
         draftGeneration,
         ts: Date.now(),
       };
@@ -155,7 +166,7 @@ export function useCodeAnnotationDraft({
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [annotations, descriptionAnnotations, commentAnnotations, viewedFiles, isApiMode, submitted]);
+  }, [annotations, descriptionAnnotations, commentAnnotations, viewedFiles, attentionFiles, fileReviewRevisions, isApiMode, submitted]);
 
   const restoreDraft = useCallback(() => {
     // Cancel any pending autosave so it can't fire with pre-restore state and
@@ -169,6 +180,8 @@ export function useCodeAnnotationDraft({
       descriptionAnnotations: data?.descriptionAnnotations ?? [],
       commentAnnotations: data?.commentAnnotations ?? [],
       viewedFiles: data?.viewedFiles ?? [],
+      attentionFiles: data?.attentionFiles ?? [],
+      fileReviewRevisions: data?.fileReviewRevisions ?? {},
     };
   }, []);
 

@@ -43,6 +43,7 @@ interface SectionsPanelProps {
   enableKeyboardNav?: boolean;
   annotations: CodeAnnotation[];
   viewedFiles: Set<string>;
+  attentionFiles: Set<string>;
   onToggleViewed?: (filePath: string) => void;
   hideViewedFiles?: boolean;
   onToggleHideViewed?: () => void;
@@ -108,6 +109,7 @@ const SectionRow: React.FC<{
   isActive: boolean;
   isScrollActive: boolean;
   isViewed: boolean;
+  needsReview: boolean;
   annotationCount: number;
   onSelect: () => void;
   onDoubleClick?: () => void;
@@ -119,7 +121,7 @@ const SectionRow: React.FC<{
   isStaged: boolean;
   isStaging: boolean;
   onStage?: () => void;
-}> = ({ item, isActive, isScrollActive, isViewed, annotationCount, onSelect, onDoubleClick, onToggleViewed, showStageButton, reserveStageSlot, isStaged, isStaging, onStage }) => {
+}> = ({ item, isActive, isScrollActive, isViewed, needsReview, annotationCount, onSelect, onDoubleClick, onToggleViewed, showStageButton, reserveStageSlot, isStaged, isStaging, onStage }) => {
   const { file } = item;
 
   // Same row anatomy as FileTreeNode's file rows — the file-tree-item class
@@ -140,7 +142,7 @@ const SectionRow: React.FC<{
           are always shown. Fixed-width slots keep the rail aligned. Path
           inherits the row font; only the letter/counts are the small size. */}
       <div className="flex items-center gap-1.5 flex-1 min-w-0">
-        <ViewedControl isViewed={isViewed} onToggle={onToggleViewed} forceVisible={isActive} />
+        <ViewedControl isViewed={isViewed} needsReview={needsReview} onToggle={onToggleViewed} forceVisible={isActive} />
         {showStageButton || isStaged ? (
           <StageControl isStaged={isStaged} isStaging={isStaging} onStage={onStage} />
         ) : item.group === 'committed' ? (
@@ -168,6 +170,7 @@ export const SectionsPanel: React.FC<SectionsPanelProps> = ({
   enableKeyboardNav,
   annotations,
   viewedFiles,
+  attentionFiles,
   onToggleViewed,
   hideViewedFiles,
   onToggleHideViewed,
@@ -383,6 +386,7 @@ export const SectionsPanel: React.FC<SectionsPanelProps> = ({
         isActive={item.index === activeFileIndex}
         isScrollActive={item.index !== activeFileIndex && scrollHighlightIndex != null && item.index === scrollHighlightIndex}
         isViewed={viewedFiles.has(item.file.path)}
+        needsReview={attentionFiles.has(item.file.path)}
         annotationCount={annotationCounts.get(item.file.path) ?? 0}
         onSelect={() => onSelectFile(item.index)}
         onDoubleClick={onDoubleClickFile ? () => onDoubleClickFile(item.index) : undefined}

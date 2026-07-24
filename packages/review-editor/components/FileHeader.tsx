@@ -12,6 +12,7 @@ interface FileHeaderProps {
   /** Previous path for renames — rendered as "old → new" (diffshub treatment). */
   oldPath?: string;
   isViewed?: boolean;
+  needsReview?: boolean;
   onToggleViewed?: () => void;
   isStaged?: boolean;
   isStaging?: boolean;
@@ -94,6 +95,7 @@ export const FileHeader: React.FC<FileHeaderProps> = ({
   status,
   oldPath,
   isViewed = false,
+  needsReview = false,
   onToggleViewed,
   isStaged = false,
   isStaging = false,
@@ -134,7 +136,7 @@ export const FileHeader: React.FC<FileHeaderProps> = ({
 
   const stageLabel = isVeryTight ? '' : isCompact ? (isStaging ? 'Adding' : isStaged ? 'Added' : 'Add') : (isStaging ? 'Adding...' : isStaged ? 'Added' : 'Git Add');
   const commentLabel = isVeryTight ? '' : 'Comment';
-  const viewedLabel = isVeryTight ? '' : 'Viewed';
+  const viewedLabel = isVeryTight ? '' : needsReview ? 'Review again' : 'Viewed';
   const { additions, deletions } = React.useMemo(() => countChanges(patch), [patch]);
 
   return (
@@ -191,13 +193,19 @@ export const FileHeader: React.FC<FileHeaderProps> = ({
           <button
             onClick={onToggleViewed}
             className={`text-xs rounded transition-colors flex items-center ${viewedLabel ? 'gap-1 px-2 py-1' : 'px-1.5 py-1'} ${
-              isViewed
-                ? 'bg-success/15 text-success'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              needsReview
+                ? 'bg-warning/15 text-warning'
+                : isViewed
+                  ? 'bg-success/15 text-success'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
             }`}
-            title={isViewed ? "Mark as not viewed (V)" : "Mark as viewed (V)"}
+            title={needsReview ? 'Changed since last review' : isViewed ? "Mark as not viewed (V)" : "Mark as viewed (V)"}
           >
-            {isViewed ? (
+            {needsReview ? (
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M3.6 18h16.8L12 3 3.6 18z" />
+              </svg>
+            ) : isViewed ? (
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>

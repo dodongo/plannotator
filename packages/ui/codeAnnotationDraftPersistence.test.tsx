@@ -237,4 +237,35 @@ describe('code-review annotation draft persistence', () => {
     expect(stillThere!.codeAnnotations).toHaveLength(1);
     await s.unmount();
   });
+
+  test.skipIf(!hasDom)('persists and restores file review attention state', async () => {
+    const reviewOptions = options({
+      viewedFiles: new Set(['Sources/Viewed.swift']),
+      attentionFiles: new Set(['Sources/Changed.swift']),
+      fileReviewRevisions: {
+        'Sources/Viewed.swift': 'viewed-revision',
+        'Sources/Changed.swift': 'changed-revision',
+      },
+    });
+    const first = await mountSession(options());
+    await first.rerender(reviewOptions);
+    await tick(DEBOUNCE_WAIT_MS);
+    await first.unmount();
+
+    const second = await mountSession(options());
+    expect(second.result.current!.draftBanner?.viewedCount).toBe(2);
+    let restored: ReturnType<HookResult['restoreDraft']> | undefined;
+    await act(async () => {
+      restored = second.result.current!.restoreDraft();
+    });
+    expect(restored).toMatchObject({
+      viewedFiles: ['Sources/Viewed.swift'],
+      attentionFiles: ['Sources/Changed.swift'],
+      fileReviewRevisions: {
+        'Sources/Viewed.swift': 'viewed-revision',
+        'Sources/Changed.swift': 'changed-revision',
+      },
+    });
+    await second.unmount();
+  });
 });

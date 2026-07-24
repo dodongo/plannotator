@@ -153,6 +153,7 @@ export const GuideDiffSection: React.FC<GuideDiffSectionProps> = ({ diffRef, isF
           onSelectAnnotation={state.onSelectAnnotation}
           onDeleteAnnotation={state.onDeleteAnnotation}
           isViewed={state.viewedFiles.has(file.path)}
+          needsReview={state.attentionFiles.has(file.path)}
           onToggleViewed={handleToggleViewed}
           collapsed={collapsed}
           onToggleCollapsed={() => setCollapsed((value) => !value)}

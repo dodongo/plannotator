@@ -187,6 +187,7 @@ interface AllFilesCodeViewProps {
   // Header actions (P3). Mirror AllFilesDiffView's header surface.
   onAddFileCommentForFile?: (filePath: string, text: string) => void;
   viewedFiles?: Set<string>;
+  attentionFiles?: Set<string>;
   onToggleViewed?: (filePath: string) => void;
   stagedFiles?: Set<string>;
   onStage?: (filePath: string) => void;
@@ -420,6 +421,7 @@ export const AllFilesCodeView: React.FC<AllFilesCodeViewProps> = ({
   onDeleteAnnotation,
   onAddFileCommentForFile,
   viewedFiles,
+  attentionFiles,
   onToggleViewed,
   stagedFiles,
   onStage,
@@ -1889,6 +1891,7 @@ export const AllFilesCodeView: React.FC<AllFilesCodeViewProps> = ({
         status={file.status}
         oldPath={file.oldPath}
         isViewed={viewedFiles?.has(filePath)}
+        needsReview={attentionFiles?.has(filePath)}
         onToggleViewed={onToggleViewed ? () => handleToggleViewedAndCollapse(filePath, item.id) : undefined}
         isStaged={stagedFiles?.has(filePath)}
         isStaging={stagingFile === filePath}

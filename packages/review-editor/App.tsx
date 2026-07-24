@@ -35,6 +35,7 @@ import { useAIChat } from './hooks/useAIChat';
 import { toast, Toaster } from 'sonner';
 import { useCodeNav, type CodeNavRequest } from './hooks/useCodeNav';
 import { extractLinesFromPatch } from './utils/patchParser';
+import { changedReviewFiles, fileReviewRevisions, newUnresolvedCommentFiles } from './utils/fileReviewState';
 import {
   shouldHandleReviewSearchShortcut,
   isTypingTarget,
@@ -276,6 +277,11 @@ const ReviewApp: React.FC = () => {
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [copyRawDiffStatus, setCopyRawDiffStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [viewedFiles, setViewedFiles] = useState<Set<string>>(new Set());
+  const [attentionFiles, setAttentionFiles] = useState<Set<string>>(new Set());
+  const [fileReviewRevisionMap, setFileReviewRevisionMap] = useState<Record<string, string>>({});
+  const fileReviewRevisionRef = useRef<Record<string, string>>({});
+  const fileReviewStateInitialized = useRef(false);
+  const seenCommentStates = useRef<Record<string, ReviewCommentStatus['state']>>({});
   const [hideViewedFiles, setHideViewedFiles] = useState(false);
   const [origin, setOrigin] = useState<Origin | null>(null);
   // Unknown until /api/diff responds. Keeping this tri-state prevents provider
@@ -400,6 +406,44 @@ const ReviewApp: React.FC = () => {
       return changed ? next : current;
     });
   }, [reviewCommentStatuses]);
+
+  const invalidateFileReviews = useCallback((filePaths: Iterable<string>) => {
+    const paths = new Set(filePaths);
+    if (paths.size === 0) return;
+    setViewedFiles((current) => {
+      const next = new Set(current);
+      for (const path of paths) next.delete(path);
+      return next;
+    });
+    setAttentionFiles((current) => {
+      const next = new Set(current);
+      for (const path of paths) next.add(path);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!diffData) return;
+    const next = fileReviewRevisions(files);
+    if (!fileReviewStateInitialized.current) {
+      fileReviewStateInitialized.current = true;
+      fileReviewRevisionRef.current = next;
+      setFileReviewRevisionMap(next);
+      return;
+    }
+    const currentPaths = new Set(Object.keys(next));
+    setViewedFiles((current) => new Set([...current].filter((path) => currentPaths.has(path))));
+    setAttentionFiles((current) => new Set([...current].filter((path) => currentPaths.has(path))));
+    invalidateFileReviews(changedReviewFiles(fileReviewRevisionRef.current, next));
+    fileReviewRevisionRef.current = next;
+    setFileReviewRevisionMap(next);
+  }, [diffData, files, invalidateFileReviews]);
+
+  useEffect(() => {
+    const result = newUnresolvedCommentFiles(seenCommentStates.current, annotations);
+    seenCommentStates.current = result.states;
+    invalidateFileReviews(result.filePaths);
+  }, [annotations, invalidateFileReviews]);
 
   const { prMetadata, prStackInfo, prStackTree, prDiffScope, prDiffScopeOptions, prPatchIncomplete, prPatchUpgradeAvailable, updatePRSession } = usePRSession();
 
@@ -634,6 +678,8 @@ const ReviewApp: React.FC = () => {
     descriptionAnnotations,
     commentAnnotations,
     viewedFiles,
+    attentionFiles,
+    fileReviewRevisions: fileReviewRevisionMap,
     isApiMode: !!origin,
     submitted: !!submitted,
   });
@@ -644,6 +690,11 @@ const ReviewApp: React.FC = () => {
     if (restored.descriptionAnnotations.length > 0) setDescriptionAnnotations(restored.descriptionAnnotations);
     if (restored.commentAnnotations.length > 0) setCommentAnnotations(restored.commentAnnotations);
     if (restored.viewedFiles.length > 0) setViewedFiles(new Set(restored.viewedFiles));
+    if (restored.attentionFiles.length > 0) setAttentionFiles(new Set(restored.attentionFiles));
+    if (Object.keys(restored.fileReviewRevisions).length > 0) {
+      fileReviewRevisionRef.current = restored.fileReviewRevisions;
+      setFileReviewRevisionMap(restored.fileReviewRevisions);
+    }
   }, [restoreDraft]);
 
   // Agent Instructions — copy a clipboard payload teaching external agents
@@ -1678,29 +1729,40 @@ const ReviewApp: React.FC = () => {
     }
   }, [files, openDiffFile]);
 
+  const unresolvedCommentFiles = useMemo(() => new Set(
+    annotations
+      .filter((annotation) => annotation.reviewStatus && annotation.reviewStatus.state !== 'addressed')
+      .map((annotation) => annotation.filePath),
+  ), [annotations]);
+
   const handleToggleViewed = useCallback((filePath: string) => {
-    setViewedFiles(prev => {
-      const next = new Set(prev);
-      const willBeViewed = !prev.has(filePath);
-      if (willBeViewed) {
-        next.add(filePath);
-      } else {
-        next.delete(filePath);
-      }
-      // Sync viewed state to GitHub (fire and forget — best effort)
-      // Capture willBeViewed inside the callback to ensure correctness with React batching
-      if (prMetadata && prMetadata.platform === 'github') {
-        fetch('/api/pr-viewed', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filePaths: [filePath], viewed: willBeViewed }),
-        }).catch(() => {
-          // Silently ignore — viewed sync is best-effort
-        });
-      }
+    if (unresolvedCommentFiles.has(filePath)) {
+      invalidateFileReviews([filePath]);
+      toast.warning('Address this file’s comments before marking it viewed');
+      return;
+    }
+
+    const willBeViewed = !viewedFiles.has(filePath) || attentionFiles.has(filePath);
+    setAttentionFiles((current) => {
+      const next = new Set(current);
+      next.delete(filePath);
       return next;
     });
-  }, [prMetadata]);
+    setViewedFiles((current) => {
+      const next = new Set(current);
+      if (willBeViewed) next.add(filePath);
+      else next.delete(filePath);
+      return next;
+    });
+
+    if (prMetadata && prMetadata.platform === 'github') {
+      fetch('/api/pr-viewed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePaths: [filePath], viewed: willBeViewed }),
+      }).catch(() => {});
+    }
+  }, [attentionFiles, invalidateFileReviews, prMetadata, unresolvedCommentFiles, viewedFiles]);
 
   // The three-stack sections panel exists only for the since-base composite
   // view in a plain git session (PR/workspace keep the classic tree).
@@ -1853,7 +1915,7 @@ const ReviewApp: React.FC = () => {
   // Shared helper: fetch a diff switch and update state.
   // Returns true on success, false on failure — callers that optimistically
   // updated UI state (e.g. the base picker) can use this to revert.
-  const fetchDiffSwitch = useCallback(async (fullDiffType: string, baseOverride?: string, options?: { preserveFile?: boolean; explicitBase?: boolean }): Promise<boolean> => {
+  const fetchDiffSwitch = useCallback(async (fullDiffType: string, baseOverride?: string, options?: { preserveFile?: boolean; explicitBase?: boolean; trackReviewChanges?: boolean }): Promise<boolean> => {
     setIsLoadingDiff(true);
     try {
       const res = await fetch('/api/diff/switch', {
@@ -1898,6 +1960,11 @@ const ReviewApp: React.FC = () => {
       setSnapshotId(data.snapshotId);
 
       const nextFiles = orderFilesBySections(parseDiffToFiles(data.rawPatch), data.sections);
+      if (!options?.trackReviewChanges) {
+        fileReviewStateInitialized.current = false;
+        fileReviewRevisionRef.current = {};
+        setFileReviewRevisionMap({});
+      }
       applySemanticDiffAdvert(data.semanticDiff);
       setSections(data.sections ?? null);
       setCommitInfo(data.commitInfo ?? null);
@@ -2186,7 +2253,7 @@ const ReviewApp: React.FC = () => {
       setBaseBehindRemote(data.baseBehindRemote === true);
       const now = liveSelectionRef.current;
       if (now.diffType === captured.diffType && now.selectedBase === captured.selectedBase) {
-        await fetchDiffSwitch(captured.diffType, captured.selectedBase ?? undefined, { preserveFile: true });
+        await fetchDiffSwitch(captured.diffType, captured.selectedBase ?? undefined, { preserveFile: true, trackReviewChanges: true });
       }
     } catch {
       // Best-effort: the banner stays and the user can retry.
@@ -2218,7 +2285,7 @@ const ReviewApp: React.FC = () => {
     }
     // Same params, fresh snapshot. preserveFile keeps the reviewer on the
     // file they were reading.
-    void fetchDiffSwitch(diffType, selectedBase, { preserveFile: true });
+    void fetchDiffSwitch(diffType, selectedBase, { preserveFile: true, trackReviewChanges: true });
     // New commits are part of what went stale — bring the rail along.
     if (showCommitsPanel) commitsView.refresh();
   }, [prMetadata, prDiffScope, prPatchIncomplete, handlePRDiffScopeSelect, handleLoadFullDiff, fetchDiffSwitch, diffType, selectedBase, showCommitsPanel, commitsView.refresh]);
@@ -2463,6 +2530,7 @@ const ReviewApp: React.FC = () => {
     onDeleteCommentAnnotation: handleDeleteCommentAnnotation,
     commentScrollTarget,
     viewedFiles,
+    attentionFiles,
     onToggleViewed: handleToggleViewed,
     stagedFiles,
     stagingFile,
@@ -3428,6 +3496,7 @@ const ReviewApp: React.FC = () => {
                 enableKeyboardNav={!showExportModal && hasSearchableFiles}
                 annotations={allAnnotations}
                 viewedFiles={viewedFiles}
+                attentionFiles={attentionFiles}
                 onToggleViewed={handleToggleViewed}
                 hideViewedFiles={hideViewedFiles}
                 onToggleHideViewed={() => setHideViewedFiles(prev => !prev)}
@@ -3511,6 +3580,7 @@ const ReviewApp: React.FC = () => {
                 onDoubleClickFile={handleFilePinned}
                 annotations={allAnnotations}
                 viewedFiles={viewedFiles}
+                attentionFiles={attentionFiles}
                 onToggleViewed={handleToggleViewed}
                 hideViewedFiles={hideViewedFiles}
                 onToggleHideViewed={() => setHideViewedFiles(prev => !prev)}

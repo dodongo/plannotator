@@ -99,6 +99,7 @@ export interface ReviewState {
 
   // Viewed / staged
   viewedFiles: Set<string>;
+  attentionFiles: Set<string>;
   onToggleViewed: (filePath: string) => void;
   stagedFiles: Set<string>;
   stagingFile: string | null;

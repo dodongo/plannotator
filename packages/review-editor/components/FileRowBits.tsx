@@ -9,20 +9,21 @@ import type { DiffFile } from '../types';
  * stage button/dot.
  */
 
-/** Viewed checkbox — always visible: green check-circle when viewed, empty
- * circle otherwise. Fixed 16px slot, same as StageControl, so the two align
+/** Review checkbox — green when viewed, yellow when stale, empty otherwise.
+ * Fixed 16px slot, same as StageControl, so the two align
  * as a column. (`forceVisible` retained as a no-op for call-site stability.) */
 export const ViewedControl: React.FC<{
   isViewed: boolean;
+  needsReview?: boolean;
   onToggle?: () => void;
   /** Deprecated no-op — the control is always visible now. */
   forceVisible?: boolean;
-}> = ({ isViewed, onToggle }) => (
-  <Tooltip content={isViewed ? 'Viewed — click to unmark' : 'Mark as viewed'} side="bottom" delayDuration={300}>
+}> = ({ isViewed, needsReview = false, onToggle }) => (
+  <Tooltip content={needsReview ? 'Changed since last review — review again' : isViewed ? 'Viewed — click to unmark' : 'Mark as viewed'} side="bottom" delayDuration={300}>
     <span
       role="checkbox"
-      aria-checked={isViewed}
-      aria-label={isViewed ? 'Viewed — unmark' : 'Mark as viewed'}
+      aria-checked={isViewed ? true : needsReview ? 'mixed' : false}
+      aria-label={needsReview ? 'Needs review' : isViewed ? 'Viewed — unmark' : 'Mark as viewed'}
       // tabIndex + key handling: these controls live INSIDE the row <button>
       // (a real nested <button> is invalid HTML), so they need their own
       // focus stop and Enter/Space activation to be keyboard-operable.
@@ -40,7 +41,11 @@ export const ViewedControl: React.FC<{
       }}
       className="w-4 h-4 flex items-center justify-center flex-shrink-0 rounded hover:bg-muted/50 cursor-pointer focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary/60"
     >
-      {isViewed ? (
+      {needsReview ? (
+        <svg className="w-3.5 h-3.5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M3.6 18h16.8L12 3 3.6 18z" />
+        </svg>
+      ) : isViewed ? (
         <svg className="w-3.5 h-3.5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>

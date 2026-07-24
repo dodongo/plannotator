@@ -11,6 +11,7 @@ interface FileTreeNodeProps {
   onSelectFile: (index: number) => void;
   onDoubleClickFile?: (index: number) => void;
   viewedFiles: Set<string>;
+  attentionFiles: Set<string>;
   onToggleViewed?: (filePath: string) => void;
   hideViewedFiles: boolean;
   getAnnotationCount: (filePath: string) => number;
@@ -53,6 +54,7 @@ export const FileTreeNodeItem: React.FC<FileTreeNodeProps> = ({
   onSelectFile,
   onDoubleClickFile,
   viewedFiles,
+  attentionFiles,
   onToggleViewed,
   hideViewedFiles,
   getAnnotationCount,
@@ -110,6 +112,7 @@ export const FileTreeNodeItem: React.FC<FileTreeNodeProps> = ({
             onSelectFile={onSelectFile}
             onDoubleClickFile={onDoubleClickFile}
             viewedFiles={viewedFiles}
+            attentionFiles={attentionFiles}
             onToggleViewed={onToggleViewed}
             hideViewedFiles={hideViewedFiles}
             getAnnotationCount={getAnnotationCount}
@@ -129,6 +132,7 @@ export const FileTreeNodeItem: React.FC<FileTreeNodeProps> = ({
   const isActive = node.fileIndex === activeFileIndex;
   const isScrollActive = !isActive && scrollHighlightIndex != null && node.fileIndex === scrollHighlightIndex;
   const isViewed = viewedFiles.has(node.path);
+  const needsReview = attentionFiles.has(node.path);
   const isStaged = stagedFiles.has(node.path);
   const annotationCount = getAnnotationCount(node.path);
   // Since-base mode: sidecar-driven markers (U for untracked, staged dot,
@@ -162,7 +166,7 @@ export const FileTreeNodeItem: React.FC<FileTreeNodeProps> = ({
               stage control (since-base mode only) and letter are always shown.
               Name inherits the row font; letter/counts stay the small size. */}
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            <ViewedControl isViewed={isViewed} onToggle={onToggleViewed ? () => onToggleViewed(node.path) : undefined} forceVisible={isActive} />
+            <ViewedControl isViewed={isViewed} needsReview={needsReview} onToggle={onToggleViewed ? () => onToggleViewed(node.path) : undefined} forceVisible={isActive} />
             {sinceBaseMode && (isStageable || isStaged) ? (
               <StageControl
                 isStaged={isStaged}

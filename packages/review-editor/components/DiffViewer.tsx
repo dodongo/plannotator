@@ -167,6 +167,7 @@ interface DiffViewerProps {
   onSelectAnnotation: (id: string | null) => void;
   onDeleteAnnotation: (id: string) => void;
   isViewed?: boolean;
+  needsReview?: boolean;
   onToggleViewed?: () => void;
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
@@ -222,6 +223,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
   onSelectAnnotation,
   onDeleteAnnotation,
   isViewed = false,
+  needsReview = false,
   onToggleViewed,
   collapsed = false,
   onToggleCollapsed,
@@ -672,6 +674,7 @@ export const DiffViewer: React.FC<DiffViewerProps> = ({
         status={status}
         oldPath={oldPath}
         isViewed={isViewed}
+        needsReview={needsReview}
         onToggleViewed={onToggleViewed}
         collapseToggle={onToggleCollapsed && (
           <svg
