@@ -12,7 +12,7 @@
  * - Writes restricted to markdown files inside cwd during planning
  * - plannotator_submit_plan tool with browser-based visual approval
  * - [DONE:n] markers for execution progress tracking
- * - /review-start and /review-stop commands for persistent code review
+ * - /review and /review-stop commands for persistent code review
  * - /plannotator-annotate command for markdown annotation
  */
 
@@ -590,7 +590,7 @@ export default function plannotator(pi: ExtensionAPI): void {
 			})();
 		},
 	};
-	pi.registerCommand("review-start", reviewStartCommand);
+	pi.registerCommand("review", reviewStartCommand);
 	pi.registerCommand("review-stop", {
 		description: "Stop the active code review browser session",
 		handler: async (_args, ctx) => {
