@@ -228,6 +228,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
   const annotationCountMap = useMemo(() => {
     const map = new Map<string, number>();
     for (const a of annotations) {
+      if (a.reviewStatus?.state === 'addressed') continue;
       map.set(a.filePath, (map.get(a.filePath) ?? 0) + 1);
     }
     return map;
