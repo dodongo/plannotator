@@ -38,8 +38,7 @@ tar -xzf "$staging/$tarball" -C "$staging"
 git fetch --quiet origin 'refs/heads/dg/pi-dist:refs/remotes/origin/dg/pi-dist' 2>/dev/null || true
 if git rev-parse --verify --quiet refs/remotes/origin/dg/pi-dist >/dev/null; then
 	git worktree add --quiet --detach "$worktree" refs/remotes/origin/dg/pi-dist
-	git -C "$worktree" switch --quiet --create dg/pi-dist --track refs/remotes/origin/dg/pi-dist 2>/dev/null ||
-		git -C "$worktree" switch --quiet dg/pi-dist
+	git -C "$worktree" switch --quiet --force-create dg/pi-dist refs/remotes/origin/dg/pi-dist
 else
 	git worktree add --quiet --detach "$worktree" HEAD
 	git -C "$worktree" switch --quiet --orphan dg/pi-dist
