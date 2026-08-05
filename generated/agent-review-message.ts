@@ -5,11 +5,11 @@ import {
   parseCommitDiffType,
   parseWorktreeDiffType,
   type DiffType,
-} from "./review-core.js";
-import type { PRMetadata } from "./pr-provider.js";
-import type { WorkspaceReviewPromptContext } from "./review-workspace.js";
+} from "./review-core.ts";
+import type { PRMetadata } from "./pr-provider.ts";
+import type { WorkspaceReviewPromptContext } from "./review-workspace.ts";
 
-export type { WorkspaceReviewPromptContext } from "./review-workspace.js";
+export type { WorkspaceReviewPromptContext } from "./review-workspace.ts";
 
 export interface AgentReviewUserMessageOptions {
   defaultBranch?: string;

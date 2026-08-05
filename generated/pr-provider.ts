@@ -12,14 +12,14 @@
  * browser-safe.
  */
 
-import { checkGhAuth, getGhUser, fetchGhPR, fetchGhPRContext, fetchGhPRFileContent, submitGhPRReview, fetchGhPRViewedFiles, markGhFilesViewed, fetchGhPRStack, fetchGhPRList } from "./pr-github";
-import { checkGlAuth, getGlUser, fetchGlMR, fetchGlMRContext, fetchGlFileContent, submitGlMRReview } from "./pr-gitlab";
-import type { PRRuntime, PRRef, PRMetadata, PRContext, PRReviewFileComment, PRStackTree, PRListItem } from "./pr-types";
+import { checkGhAuth, getGhUser, fetchGhPR, fetchGhPRContext, fetchGhPRFileContent, submitGhPRReview, fetchGhPRViewedFiles, markGhFilesViewed, fetchGhPRStack, fetchGhPRList } from "./pr-github.ts";
+import { checkGlAuth, getGlUser, fetchGlMR, fetchGlMRContext, fetchGlFileContent, submitGlMRReview } from "./pr-gitlab.ts";
+import type { PRRuntime, PRRef, PRMetadata, PRContext, PRReviewFileComment, PRStackTree, PRListItem } from "./pr-types.ts";
 
 // Re-export the browser-safe surface so server callers can keep using
 // pr-provider as a single facade. Browser code imports from pr-types
 // directly to avoid pulling pr-github / pr-gitlab into the client bundle.
-export * from "./pr-types";
+export * from "./pr-types.ts";
 
 // --- Dispatch Functions ---
 

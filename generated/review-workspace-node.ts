@@ -10,9 +10,9 @@ import {
   parseDiffMetadataPathLines,
   parseDiffMetadataPathToken,
   parsePatchPathToken,
-} from "./diff-paths";
-import { validateFilePath } from "./review-core";
-import { getFileBrowserMaxFiles } from "./resolve-file";
+} from "./diff-paths.ts";
+import { validateFilePath } from "./review-core.ts";
+import { getFileBrowserMaxFiles } from "./resolve-file.ts";
 
 const SKIP_DIRS = new Set([
   ".git",

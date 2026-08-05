@@ -9,7 +9,7 @@
  * PR local checkout, agent sandboxes, parallel sessions — all compose from these.
  */
 
-import type { ReviewGitRuntime } from "./review-core";
+import type { ReviewGitRuntime } from "./review-core.ts";
 
 // ---------------------------------------------------------------------------
 // Types

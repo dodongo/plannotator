@@ -4,14 +4,14 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
-import { getPlannotatorDataDir } from "./data-dir";
+import { getPlannotatorDataDir } from "./data-dir.ts";
 import type {
   SemanticDiffAvailability,
   SemanticDiffBinaryChange,
   SemanticDiffChange,
   SemanticDiffResponse,
   SemanticDiffSummary,
-} from "./semantic-diff-types";
+} from "./semantic-diff-types.ts";
 
 export const PLANNOTATOR_SEM_VERSION = "v0.8.0";
 

@@ -4,7 +4,7 @@ import { existsSync, realpathSync } from "node:fs";
 import { readFile, realpath, stat } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 
-import type { WorkspaceFileChange, WorkspaceStatusPayload, GitRepositoryInfo, WorkspaceFileStatus } from './workspace-status-types.js';
+import type { WorkspaceFileChange, WorkspaceStatusPayload, GitRepositoryInfo, WorkspaceFileStatus } from './workspace-status-types.ts';
 export type { WorkspaceFileChange, WorkspaceStatusPayload, GitRepositoryInfo, WorkspaceFileStatus };
 
 const TEXT_FILE_MAX_BYTES = 2 * 1024 * 1024;

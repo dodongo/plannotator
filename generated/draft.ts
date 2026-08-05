@@ -12,7 +12,7 @@
 import { join } from "path";
 import { mkdirSync, writeFileSync, readFileSync, renameSync, unlinkSync, existsSync } from "fs";
 import { createHash } from "crypto";
-import { getPlannotatorDataDir } from "./data-dir";
+import { getPlannotatorDataDir } from "./data-dir.ts";
 
 /**
  * Get the drafts directory, creating it if needed.

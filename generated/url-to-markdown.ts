@@ -6,7 +6,7 @@
  * returning clean markdown for the annotation pipeline.
  */
 
-import { htmlToMarkdown } from "./html-to-markdown";
+import { htmlToMarkdown } from "./html-to-markdown.ts";
 
 export interface UrlToMarkdownOptions {
   /** Whether to use Jina Reader (true) or plain fetch+Turndown (false). */

@@ -21,7 +21,7 @@ import {
   getWorkingTreeDiffFromBase,
   hashFingerprintPart,
   validateFilePath,
-} from "./review-core";
+} from "./review-core.ts";
 
 /** Oldest GitButler CLI release whose status contract this integration supports. */
 export const GITBUTLER_MIN_VERSION = "0.21.0";

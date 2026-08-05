@@ -11,7 +11,7 @@
 // Context — what the AI session knows about
 // ---------------------------------------------------------------------------
 
-import type { AIContext, AIContextMode, PlanContext, CodeReviewContext, AnnotateContext, ParentSession } from './ai-context.js';
+import type { AIContext, AIContextMode, PlanContext, CodeReviewContext, AnnotateContext, ParentSession } from './ai-context.ts';
 export type { AIContext, AIContextMode, PlanContext, CodeReviewContext, AnnotateContext, ParentSession };
 
 // ---------------------------------------------------------------------------

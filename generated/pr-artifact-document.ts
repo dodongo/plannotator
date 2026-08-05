@@ -1,5 +1,5 @@
 // @generated — DO NOT EDIT. Source: packages/shared/pr-artifact-document.ts
-import type { PRContext, PRMetadata, PRRuntime } from './pr-types';
+import type { PRContext, PRMetadata, PRRuntime } from './pr-types.ts';
 
 const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
 const MAX_MEDIA_BYTES = 64 * 1024 * 1024;

@@ -26,8 +26,8 @@
  * worth the complexity for a vanishingly rare naming pattern.
  */
 
-import { stripAtPrefix } from "./at-reference";
-import { stripWrappingQuotes } from "./resolve-file";
+import { stripAtPrefix } from "./at-reference.ts";
+import { stripWrappingQuotes } from "./resolve-file.ts";
 
 export interface ParsedAnnotateArgs {
   /**

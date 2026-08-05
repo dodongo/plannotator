@@ -13,7 +13,7 @@ import {
   gitResetFile,
   parseWorktreeDiffType,
   runGitDiff,
-} from "./review-core";
+} from "./review-core.ts";
 import { isAbsolute, relative, resolve } from "node:path";
 import {
   type ReviewJjRuntime,
@@ -22,7 +22,7 @@ import {
   getJjDiffFingerprint,
   getJjFileContentsForDiff,
   runJjDiff,
-} from "./jj-core";
+} from "./jj-core.ts";
 import {
   type ReviewGitButlerRuntime,
   detectGitButlerWorkspace,
@@ -31,7 +31,7 @@ import {
   getGitButlerFileContentsForDiff,
   parseGitButlerDiffType,
   runGitButlerDiff,
-} from "./gitbutler-core";
+} from "./gitbutler-core.ts";
 
 export type {
   DiffOption,
@@ -40,7 +40,7 @@ export type {
   GitContext,
   GitDiffOptions,
   WorktreeInfo,
-} from "./review-core";
+} from "./review-core.ts";
 
 export {
   JJ_TRUNK_REVSET,
@@ -50,7 +50,7 @@ export {
   parseRemoteBookmark,
   parseWorktreeDiffType,
   validateFilePath,
-} from "./review-core";
+} from "./review-core.ts";
 
 export interface VcsProvider {
   readonly id: string;

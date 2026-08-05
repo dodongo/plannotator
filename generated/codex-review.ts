@@ -10,13 +10,13 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { appendFile, mkdir, unlink, writeFile, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { toRelativePath } from "./path-utils.js";
-import { getPlannotatorDataDir } from "./data-dir";
+import { toRelativePath } from "./path-utils.ts";
+import { getPlannotatorDataDir } from "./data-dir.ts";
 import {
   composeReviewPrompt,
   type ResolvedReviewProfile,
-} from "./review-profiles.js";
-import { classifyFindingPlacement } from "./external-annotation.js";
+} from "./review-profiles.ts";
+import { classifyFindingPlacement } from "./external-annotation.ts";
 
 // ---------------------------------------------------------------------------
 // Debug log — only active when PLANNOTATOR_DEBUG is set

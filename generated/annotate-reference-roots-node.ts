@@ -1,7 +1,7 @@
 // @generated — DO NOT EDIT. Source: packages/shared/annotate-reference-roots-node.ts
 import { realpathSync } from "fs";
 import { dirname } from "path";
-import { resolveUserPath } from "./resolve-file";
+import { resolveUserPath } from "./resolve-file.ts";
 
 export interface AnnotateReferenceRootOptions {
 	mode?: string;

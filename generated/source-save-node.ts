@@ -12,7 +12,7 @@ import {
 	writeFileSync,
 } from "fs";
 import { basename, dirname, join } from "path";
-import { isWithinProjectRoot, resolveUserPath } from "./resolve-file";
+import { isWithinProjectRoot, resolveUserPath } from "./resolve-file.ts";
 import {
 	disabledSourceSave,
 	enabledSourceSave,
@@ -23,7 +23,7 @@ import {
 	type SourceSaveCapability,
 	type SourceSaveResponse,
 	type SourceSaveScope,
-} from "./source-save";
+} from "./source-save.ts";
 
 export function hashSourceBytes(bytes: Uint8Array): string {
 	return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;

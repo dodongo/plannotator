@@ -8,9 +8,9 @@
 
 import { join } from "path";
 import { mkdirSync, writeFileSync } from "fs";
-import type { PRRuntime, PRMetadata, PRContext, PRReviewFileComment, CommandResult } from "./pr-types";
-import { encodeApiFilePath } from "./pr-types";
-import { getPlannotatorDataDir } from "./data-dir";
+import type { PRRuntime, PRMetadata, PRContext, PRReviewFileComment, CommandResult } from "./pr-types.ts";
+import { encodeApiFilePath } from "./pr-types.ts";
+import { getPlannotatorDataDir } from "./data-dir.ts";
 
 // GitLab-specific MRRef shape (used internally)
 interface GlMRRef {
@@ -48,8 +48,8 @@ interface GitLabDiffEntry {
   collapsed?: boolean | null;
 }
 
-export { parsePaginatedArray } from "./cli-pagination";
-import { parsePaginatedArray } from "./cli-pagination";
+export { parsePaginatedArray } from "./cli-pagination.ts";
+import { parsePaginatedArray } from "./cli-pagination.ts";
 
 /**
  * Reconstruct a unified patch from GitLab's merge_request diffs API response.

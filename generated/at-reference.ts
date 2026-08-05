@@ -15,7 +15,7 @@
  * callback, so they're trivial to unit-test without stubbing anything.
  */
 
-import { stripWrappingQuotes } from "./resolve-file";
+import { stripWrappingQuotes } from "./resolve-file.ts";
 
 /**
  * Normalize a user-typed path reference by unwrapping matching `"..."` or

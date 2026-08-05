@@ -5,7 +5,7 @@ import {
   htmlAssetContentType,
   rewriteCssAssetReferences,
   rewriteHtmlAssetReferences,
-} from "./html-assets";
+} from "./html-assets.ts";
 
 export const MAX_HTML_ASSET_BYTES = 50 * 1024 * 1024;
 

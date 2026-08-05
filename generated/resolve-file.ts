@@ -15,9 +15,9 @@ import { isAbsolute, join, resolve, win32 } from "path";
 import { existsSync, readdirSync, type Dirent } from "fs";
 import { readdir } from "node:fs/promises";
 
-import { ANNOTATABLE_TEXT_REGEX } from "./annotatable";
-import { CODE_FILE_REGEX as CODE_FILE_BASENAME_REGEX } from "./code-file";
-export { CODE_FILE_REGEX, isCodeFilePath } from "./code-file";
+import { ANNOTATABLE_TEXT_REGEX } from "./annotatable.ts";
+import { CODE_FILE_REGEX as CODE_FILE_BASENAME_REGEX } from "./code-file.ts";
+export { CODE_FILE_REGEX, isCodeFilePath } from "./code-file.ts";
 export {
 	ANNOTATABLE_TEXT_REGEX,
 	ANNOTATABLE_DOC_REGEX,
@@ -25,7 +25,7 @@ export {
 	MAX_ANNOTATABLE_FILE_BYTES,
 	isAnnotatableTextPath,
 	isAnnotatableDocPath,
-} from "./annotatable";
+} from "./annotatable.ts";
 
 const WINDOWS_DRIVE_PATH_PATTERNS = [
 	/^\/cygdrive\/([a-zA-Z])\/(.+)$/,

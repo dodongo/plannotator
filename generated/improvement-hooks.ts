@@ -20,7 +20,7 @@
 
 import { join } from "path";
 import { readFileSync, statSync } from "fs";
-import { getPlannotatorDataDir } from "./data-dir";
+import { getPlannotatorDataDir } from "./data-dir.ts";
 
 const DATA_DIR = getPlannotatorDataDir();
 

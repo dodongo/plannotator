@@ -28,7 +28,7 @@
  * commits endpoint — rows just render the initials fallback.
  */
 
-import { parseRemoteUrl, parseRemoteHost } from "./repo";
+import { parseRemoteUrl, parseRemoteHost } from "./repo.ts";
 
 export interface CommandResult {
   stdout: string;

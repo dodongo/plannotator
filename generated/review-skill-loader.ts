@@ -31,11 +31,11 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { getPlannotatorDataDir } from "./data-dir";
+import { getPlannotatorDataDir } from "./data-dir.ts";
 import {
   BUILTIN_DEFAULT_PROFILE,
   type ResolvedReviewProfile,
-} from "./review-profiles.js";
+} from "./review-profiles.ts";
 
 /**
  * Oversized-body bound. A giant SKILL.md would blow up the review prompt; over

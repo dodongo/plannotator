@@ -1,5 +1,5 @@
 // @generated — DO NOT EDIT. Source: packages/shared/pr-context-live.ts
-import type { PRContext, PRRef } from "./pr-types";
+import type { PRContext, PRRef } from "./pr-types.ts";
 
 export type PRContextRefreshReason =
   | "warm"

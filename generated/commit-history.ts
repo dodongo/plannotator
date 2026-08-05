@@ -16,7 +16,7 @@ import {
   COMMIT_FIELD_SEP,
   splitCommitFormatFields,
   type ReviewGitRuntime,
-} from "./review-core";
+} from "./review-core.ts";
 
 // --- Commit history rail ------------------------------------------------------
 //

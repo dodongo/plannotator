@@ -1,6 +1,6 @@
 // @generated — DO NOT EDIT. Source: packages/shared/review-args.ts
-import type { VcsSelection } from "./vcs-core";
-import { stripWrappingQuotes } from "./resolve-file";
+import type { VcsSelection } from "./vcs-core.ts";
+import { stripWrappingQuotes } from "./resolve-file.ts";
 
 export interface ParsedReviewArgs {
   prUrl?: string;

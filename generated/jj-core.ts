@@ -10,7 +10,7 @@ import {
   JJ_TRUNK_REVSET,
   jjLineBaseRevset,
   validateFilePath,
-} from "./review-core";
+} from "./review-core.ts";
 
 export {
   JJ_TRUNK_REVSET,
@@ -18,7 +18,7 @@ export {
   jjLineBaseRevset,
   parseRemoteBookmark,
   type JjEvoLogEntry,
-} from "./review-core";
+} from "./review-core.ts";
 
 export interface ReviewJjRuntime {
   runJj: (

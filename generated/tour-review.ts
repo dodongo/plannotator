@@ -2,17 +2,17 @@
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { mkdir, writeFile, readFile, unlink } from "node:fs/promises";
-import { getPlannotatorDataDir } from "./data-dir";
-import type { DiffType } from "./review-core.js";
-import type { PRMetadata } from "./pr-provider.js";
-import { buildWorkspacePromptContextLines, getLocalDiffInstruction, type WorkspaceReviewPromptContext } from "./agent-review-message.js";
+import { getPlannotatorDataDir } from "./data-dir.ts";
+import type { DiffType } from "./review-core.ts";
+import type { PRMetadata } from "./pr-provider.ts";
+import { buildWorkspacePromptContextLines, getLocalDiffInstruction, type WorkspaceReviewPromptContext } from "./agent-review-message.ts";
 import type {
   CodeTourOutput,
   TourDiffAnchor,
   TourKeyTakeaway,
   TourStop,
   TourQAItem,
-} from "./tour.js";
+} from "./tour.ts";
 
 export type { CodeTourOutput, TourDiffAnchor, TourKeyTakeaway, TourStop, TourQAItem };
 

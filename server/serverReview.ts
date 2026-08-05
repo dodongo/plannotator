@@ -4,15 +4,15 @@ import { createServer } from "node:http";
 import os from "node:os";
 import { basename, resolve as resolvePath } from "node:path";
 
-import { SingleFlight } from "../generated/single-flight.js";
-import { contentHash, deleteDraft } from "../generated/draft.js";
-import { loadConfig, saveConfig, detectGitUser, getServerConfig, resolveSharingEnabled, resolveCursorSandbox } from "../generated/config.js";
+import { SingleFlight } from "../generated/single-flight.ts";
+import { contentHash, deleteDraft } from "../generated/draft.ts";
+import { loadConfig, saveConfig, detectGitUser, getServerConfig, resolveAIEnabled, resolveSharingEnabled, resolveCursorSandbox, resolveGuideHistory } from "../generated/config.ts";
 
 export type {
 	DiffOption,
 	DiffType,
 	GitContext,
-} from "../generated/review-core.js";
+} from "../generated/review-core.ts";
 
 import {
 	getDisplayRepo,
@@ -23,18 +23,18 @@ import {
 	type PRRef,
 	type PRReviewFileComment,
 	prRefFromMetadata,
-} from "../generated/pr-types.js";
+} from "../generated/pr-types.ts";
 import {
 	PR_CONTEXT_HEARTBEAT_COMMENT,
 	PR_CONTEXT_HEARTBEAT_INTERVAL_MS,
 	createPRContextLiveCache,
 	serializePRContextSSEEvent,
-} from "../generated/pr-context-live.js";
+} from "../generated/pr-context-live.ts";
 import {
 	fetchPRArtifactContent,
 	fetchPRArtifactDocument,
 	PRArtifactDocumentError,
-} from "../generated/pr-artifact-document.js";
+} from "../generated/pr-artifact-document.ts";
 import {
 	type DiffType,
 	type GitContext,
@@ -43,22 +43,23 @@ import {
 	detectRemoteDefaultInfo,
 	getFileContentsForDiff as getFileContentsForDiffCore,
 	getSinceBaseSections,
+	isBinaryPatchFile,
 	isSameCwdCommitSwitch,
 	listPatchFiles,
 	parseCommitDiffType,
 	parseWorktreeDiffType,
 	resolveBaseBranch,
 	validateFilePath,
-} from "../generated/review-core.js";
+} from "../generated/review-core.ts";
 import {
 	getGitButlerContextRevision,
 	getGitButlerPatchFingerprint,
-} from "../generated/gitbutler-core.js";
+} from "../generated/gitbutler-core.ts";
 import {
 	getCommitDiffInfo,
 	listCommitHistory,
 	type CommitDiffInfo,
-} from "../generated/commit-history.js";
+} from "../generated/commit-history.ts";
 import {
 	checkoutPRHead,
 	getPRDiffScopeOptions,
@@ -69,15 +70,15 @@ import {
 	runPRFullStackDiff,
 	runPRLayerLocalDiff,
 	type PRDiffScope,
-} from "../generated/pr-stack.js";
+} from "../generated/pr-stack.ts";
 
-import { resolvePoolCwd, type WorktreePool } from "../generated/worktree-pool.js";
-import { createCommitAvatarResolver } from "../generated/commit-avatars.js";
+import { resolvePoolCwd, type WorktreePool } from "../generated/worktree-pool.ts";
+import { createCommitAvatarResolver } from "../generated/commit-avatars.ts";
 
-import { createEditorAnnotationHandler } from "./annotations.js";
-import { createAgentJobHandler, whichCmd as commandExists } from "./agent-jobs.js";
-import { type AgentJobInfo, REVIEW_OUTPUT_FAILED, getAgentJobAnnotationContext, markJobReviewFailed } from "../generated/agent-jobs.js";
-import { createExternalAnnotationHandler } from "./external-annotations.js";
+import { createEditorAnnotationHandler } from "./annotations.ts";
+import { createAgentJobHandler, whichCmd as commandExists } from "./agent-jobs.ts";
+import { type AgentJobInfo, REVIEW_OUTPUT_FAILED, getAgentJobAnnotationContext, markJobReviewFailed } from "../generated/agent-jobs.ts";
+import { createExternalAnnotationHandler } from "./external-annotations.ts";
 import {
 	handleDraftRequest,
 	handleFavicon,
@@ -85,13 +86,13 @@ import {
 	readDraftGenerationFromBody,
 	readDraftGenerationFromUrl,
 	handleUploadRequest,
-} from "./handlers.js";
-import { handleApiNotFound, html, json, parseBody, requestUrl, send } from "./helpers.js";
-import { createPiAIRuntime, handlePiAIRequest } from "./ai-runtime.js";
+} from "./handlers.ts";
+import { handleApiNotFound, html, json, parseBody, requestUrl, send } from "./helpers.ts";
+import { createPiAIRuntime, handlePiAIRequest } from "./ai-runtime.ts";
 
-import { isRemoteSession, listenOnPort } from "./network.js";
-import { getAvailableOpenInApps, openFileInApp } from "./open-in-apps.js";
-import { resolveOpenInTarget } from "../generated/html-assets-node.js";
+import { isRemoteSession, listenOnPort } from "./network.ts";
+import { getAvailableOpenInApps, openFileInApp } from "./open-in-apps.ts";
+import { resolveOpenInTarget } from "../generated/html-assets-node.ts";
 import {
 	fetchPR,
 	fetchPRContext,
@@ -104,24 +105,25 @@ import {
 	parsePRUrl,
 	prCommandRuntime,
 	submitPRReview,
-} from "./pr.js";
-import { getRepoInfo } from "./project.js";
+} from "./pr.ts";
+import { getRepoInfo } from "./project.ts";
 import {
 	composeCodexReviewPrompt,
 	buildCodexCommand,
 	generateOutputPath,
 	parseCodexOutput,
 	transformReviewFindings,
-} from "../generated/codex-review.js";
-import { buildAgentReviewUserMessage, buildAgentReviewUserMessageForTarget, type WorkspaceReviewPromptContext } from "../generated/agent-review-message.js";
+} from "../generated/codex-review.ts";
+import { buildAgentReviewUserMessage, buildAgentReviewUserMessageForTarget, type WorkspaceReviewPromptContext } from "../generated/agent-review-message.ts";
 import {
 	composeClaudeReviewPrompt,
 	buildClaudeCommand,
 	parseClaudeStreamOutput,
 	transformClaudeFindings,
-} from "../generated/claude-review.js";
-import { createTourSession, TOUR_EMPTY_OUTPUT_ERROR } from "../generated/tour-review.js";
-import { createGuideSession, GUIDE_EMPTY_OUTPUT_ERROR } from "../generated/guide-review.js";
+} from "../generated/claude-review.ts";
+import { createTourSession, TOUR_EMPTY_OUTPUT_ERROR } from "../generated/tour-review.ts";
+import { createGuideSession, GUIDE_EMPTY_OUTPUT_ERROR } from "../generated/guide-review.ts";
+import { createGuideStoreSession, SAVED_GUIDE_ID_PREFIX } from "../generated/guide-store.ts";
 import {
 	MARKER_ENGINES,
 	composeMarkerReviewPrompt,
@@ -132,18 +134,18 @@ import {
 	makeMarkerNonce,
 	extractMarkerNonce,
 	type MarkerEngineId,
-} from "../generated/marker-review.js";
+} from "../generated/marker-review.ts";
 import {
 	WorkspaceReviewSession,
 	type WorkspaceDiffType,
-} from "../generated/review-workspace.js";
+} from "../generated/review-workspace.ts";
 import {
 	type CodeNavRequest,
 	type CodeNavRuntime,
 	resolveCodeNav,
 	validateCodeNavRequest,
 	extractChangedFiles,
-} from "../generated/code-nav.js";
+} from "../generated/code-nav.ts";
 import {
 	createDefaultSemanticDiffRuntime,
 	getSemanticDiffAvailability,
@@ -152,13 +154,13 @@ import {
 	semanticDiffCacheKey,
 	semanticDiffFileExtsFromSearchParams,
 	SemanticDiffResponseCache,
-} from "../generated/semantic-diff.js";
-import type { SemanticDiffAvailability, SemanticDiffResponse } from "../generated/semantic-diff-types.js";
-import { discoverCuratedSkills, resolveRequestedReviewProfile, listAllSkills, enableReviewSkill } from "../generated/review-skill-loader.js";
+} from "../generated/semantic-diff.ts";
+import type { SemanticDiffAvailability, SemanticDiffResponse } from "../generated/semantic-diff-types.ts";
+import { discoverCuratedSkills, resolveRequestedReviewProfile, listAllSkills, enableReviewSkill } from "../generated/review-skill-loader.ts";
 import {
 	BUILTIN_DEFAULT_PROFILE,
 	type ReviewProfilesResponse,
-} from "../generated/review-profiles.js";
+} from "../generated/review-profiles.ts";
 import {
 	canStageFiles,
 	detectRemoteDefaultCompareTarget,
@@ -171,7 +173,7 @@ import {
 	stageFile,
 	unstageFile,
 	vcsOwnsDiffType,
-} from "./vcs.js";
+} from "./vcs.ts";
 
 const piCodeNavRuntime: CodeNavRuntime = {
 	runCommand(command, args, options) {
@@ -285,6 +287,7 @@ export async function startReviewServer(options: {
 	onReady?: (url: string, isRemote: boolean, port: number) => void;
 }): Promise<ReviewServerResult> {
 	const gitUser = detectGitUser();
+	const aiEnabled = resolveAIEnabled();
 	let draftKey = contentHash(options.rawPatch);
 	let prMeta = options.prMetadata;
 	const isPRMode = !!prMeta;
@@ -302,7 +305,7 @@ export async function startReviewServer(options: {
 		? getPRDiffScopeOptions(prMeta, !!(options.worktreePool || options.agentCwd))
 		: [];
 
-	let prListCache: import("../generated/pr-types.js").PRListItem[] | null = null;
+	let prListCache: import("../generated/pr-types.ts").PRListItem[] | null = null;
 	let prListCacheTime = 0;
 	// Platform APIs withhold per-file patches on very large PRs. When the layer
 	// patch is incomplete, a local recompute (exact merge-base diff, no size
@@ -322,7 +325,7 @@ export async function startReviewServer(options: {
 			patchIncomplete: layerPatchIncomplete,
 		});
 	}
-	const prStackTreeCache = new Map<string, import("../generated/pr-types.js").PRStackTree | null>();
+	const prStackTreeCache = new Map<string, import("../generated/pr-types.ts").PRStackTree | null>();
 	const prContextLive = createPRContextLiveCache({ fetchContext: fetchPRContext });
 	const warmPRContext = (url: string, ref: PRRef): void => {
 		prContextLive.warm(url, ref);
@@ -330,7 +333,7 @@ export async function startReviewServer(options: {
 
 	// Fetch full stack tree (best-effort — always try in PR mode so root PRs
 	// that target the default branch can still discover descendant PRs)
-	let prStackTree: import("../generated/pr-types.js").PRStackTree | null = null;
+	let prStackTree: import("../generated/pr-types.ts").PRStackTree | null = null;
 	if (prRef && prMeta) {
 		warmPRContext(prMeta.url, prRef);
 		try {
@@ -749,7 +752,8 @@ export async function startReviewServer(options: {
 		patch: string = currentPatch,
 		base: string = currentBase,
 		diffType: DiffType = currentDiffType as DiffType,
-	): string {
+	): string | undefined {
+		if (!aiEnabled) return undefined;
 		const workspacePrompt = getWorkspacePromptContext();
 		if (workspacePrompt) {
 			return buildAgentReviewUserMessageForTarget(
@@ -771,6 +775,34 @@ export async function startReviewServer(options: {
 	}
 	const tour = createTourSession();
 	const guide = createGuideSession();
+	// Durable guide persistence (#1112): autosaves validated guides to
+	// ${PLANNOTATOR_DATA_DIR}/guides/{repo-key}/ and serves them back through
+	// the existing guide endpoints as `saved:{id}` pseudo job ids. All getters
+	// are late-bound — prMeta/currentDiffType can change mid-session.
+	// Mirrors packages/server/review.ts's guideStore wiring.
+	const guideStore = createGuideStoreSession({
+		runGit: async (args, cwd) => {
+			const result = await reviewRuntime.runGit(args, { cwd });
+			return result.exitCode === 0 ? result.stdout : null;
+		},
+		getGitCwd: () =>
+			isPRMode || isWorkspaceMode
+				? undefined
+				: options.gitContext
+					? resolveVcsCwd(currentDiffType as DiffType, options.gitContext.cwd) ?? options.gitContext.cwd ?? process.cwd()
+					: undefined,
+		getPRInfo: () =>
+			prMeta
+				? {
+						url: prMeta.url,
+						headSha: prMeta.headSha,
+						label: `${getMRLabel(prMeta)} ${getMRNumberLabel(prMeta)}`,
+					}
+				: null,
+		getBranchLabel: () => clientGitContext?.currentBranch || options.gitContext?.currentBranch,
+		getFallbackDir: () => workspace?.root ?? options.agentCwd ?? process.cwd(),
+		writesEnabled: () => resolveGuideHistory(loadConfig()),
+	});
 	const semanticDiffScratchCwd = getSemanticDiffScratchCwd();
 	function resolveSemanticDiffCwd(diffType: DiffType = currentDiffType as DiffType): string {
 		if (workspace) return workspace.root;
@@ -1052,6 +1084,15 @@ export async function startReviewServer(options: {
 				const changedFilesSnapshot = repairOf
 					? guide.getLaunchChangedFiles(repairOf) ?? changedFiles.map((f) => f.path)
 					: changedFiles.map((f) => f.path);
+				// Snapshot the launch-time review-target context (#1112): guide jobs
+				// run for minutes while the session supports mid-generation PR/diff
+				// switching, so the persisted envelope must be labeled with the
+				// context this guide is GENERATED against — captured now, carried on
+				// the job (guideContext), and read back at completion instead of the
+				// live session state. Repairs reuse the FAILED job's own snapshot,
+				// same as changedFilesSnapshot above. Mirrors packages/server/review.ts.
+				const guideContext = (repairOf ? agentJobs.getJob(repairOf)?.guideContext : undefined)
+					?? await guideStore.captureLaunchContext();
 				return {
 					...built,
 					prUrl: launchPrUrl,
@@ -1060,6 +1101,7 @@ export async function startReviewServer(options: {
 					reviewProfileId: reviewProfile.id,
 					reviewProfileLabel: reviewProfile.label,
 					changedFilesSnapshot,
+					guideContext,
 				};
 			}
 
@@ -1296,6 +1338,13 @@ export async function startReviewServer(options: {
 				const { summary, error } = await guide.onJobComplete({ job, meta, changedFiles });
 				if (summary) {
 					job.summary = summary;
+					// Autosave (#1112): only guides that passed validateGuideOutput
+					// ever reach guideResults, so a getGuide hit here IS the
+					// validation gate. Failed/invalid guides never write. The job's
+					// launch-time context snapshot labels the envelope — never the
+					// live session state, which may have PR/diff-switched mid-run.
+					const validated = guide.getGuide(job.id);
+					if (validated) await guideStore.saveForJob(job, validated, job.guideContext);
 				} else {
 					// Same fail-closed precedent as Tour: an exit-0 job with empty,
 					// malformed, or fully-invalidated output must not look like a
@@ -1329,7 +1378,7 @@ export async function startReviewServer(options: {
 		return new Promise((resolvePromise) => decisionWaiters.push(resolvePromise));
 	};
 
-	const aiRuntime = await createPiAIRuntime({ getCwd: resolveAgentCwd });
+	const aiRuntime = aiEnabled ? await createPiAIRuntime({ getCwd: resolveAgentCwd }) : null;
 
 	const server = createServer(async (req, res) => {
 		const url = requestUrl(req);
@@ -1360,29 +1409,69 @@ export async function startReviewServer(options: {
 			return;
 		}
 
-		// API: Get guide result
+		// API: Get guide result — live job ids, or `saved:{id}` for a
+		// persisted guide loaded from the on-disk store (#1112).
 		if (url.pathname.match(/^\/api\/guide\/[^/]+$/) && req.method === "GET") {
-			const jobId = url.pathname.slice("/api/guide/".length);
+			const jobId = decodeURIComponent(url.pathname.slice("/api/guide/".length));
+			if (jobId.startsWith(SAVED_GUIDE_ID_PREFIX)) {
+				const saved = await guideStore.getSavedGuideData(jobId.slice(SAVED_GUIDE_ID_PREFIX.length));
+				if (!saved) {
+					json(res, { error: "Guide not found" }, 404);
+					return;
+				}
+				json(res, saved);
+				return;
+			}
 			const result = guide.getGuide(jobId);
 			if (!result) {
 				json(res, { error: "Guide not found" }, 404);
 				return;
 			}
-			json(res, result);
+			json(res, { ...result, ...(guideStore.isJobSaved(jobId) ? { saved: true } : {}) });
 			return;
 		}
 
-		// API: Save guide reviewed state
+		// API: Save guide reviewed state. Live job ids also write through to
+		// the job's autosaved file; `saved:{id}` ids persist directly.
 		const reviewedMatch = url.pathname.match(/^\/api\/guide\/([^/]+)\/reviewed$/);
 		if (reviewedMatch && req.method === "PUT") {
-			const jobId = reviewedMatch[1];
+			const jobId = decodeURIComponent(reviewedMatch[1]);
 			try {
 				const body = await parseBody(req) as { reviewed: boolean[] };
-				if (Array.isArray(body.reviewed)) guide.saveReviewed(jobId, body.reviewed);
+				if (Array.isArray(body.reviewed)) {
+					if (jobId.startsWith(SAVED_GUIDE_ID_PREFIX)) {
+						const ok = await guideStore.updateSavedReviewed(jobId.slice(SAVED_GUIDE_ID_PREFIX.length), body.reviewed);
+						if (!ok) {
+							json(res, { error: "Guide not found" }, 404);
+							return;
+						}
+					} else {
+						guide.saveReviewed(jobId, body.reviewed);
+						await guideStore.writeThroughReviewed(jobId, body.reviewed);
+					}
+				}
 				json(res, { ok: true });
 			} catch {
 				json(res, { error: "Invalid JSON" }, 400);
 			}
+			return;
+		}
+
+		// API: List saved guides for the current repo (#1112)
+		if (url.pathname === "/api/guides" && req.method === "GET") {
+			json(res, await guideStore.listSaved());
+			return;
+		}
+
+		// API: Delete a saved guide (#1112)
+		const savedGuideDeleteMatch = url.pathname.match(/^\/api\/guides\/([^/]+)$/);
+		if (savedGuideDeleteMatch && req.method === "DELETE") {
+			const ok = await guideStore.deleteSaved(decodeURIComponent(savedGuideDeleteMatch[1]));
+			if (!ok) {
+				json(res, { error: "Guide not found" }, 404);
+				return;
+			}
+			json(res, { ok: true });
 			return;
 		}
 
@@ -1430,6 +1519,11 @@ export async function startReviewServer(options: {
 					explanation: `${sections} section${sections !== 1 ? "s" : ""}, ${files} file${files !== 1 ? "s" : ""} placed (manually repaired)`,
 					confidence: 1,
 				});
+				// A manually repaired guide passed the same validateGuideOutput
+				// gate as an automatic one — persist it too (#1112), labeled
+				// with the job's own launch-time context snapshot.
+				const repaired = guide.getGuide(jobId);
+				if (repaired) await guideStore.saveForJob(existingJob, repaired, existingJob.guideContext);
 				json(res, { ok: true, sections, files });
 			} catch {
 				json(res, { error: "Invalid JSON" }, 400);
@@ -1460,6 +1554,7 @@ export async function startReviewServer(options: {
 			json(res, {
 				rawPatch: servedPatch,
 				aiReviewContext: buildCurrentAiReviewContext(servedPatch, servedBase, servedDiffType as DiffType),
+				aiEnabled,
 				gitRef: servedGitRef,
 				snapshotId: servedSnapshotId,
 				origin: options.origin ?? "pi",
@@ -2241,6 +2336,11 @@ export async function startReviewServer(options: {
 				}
 			}
 
+			if (isBinaryPatchFile(currentPatch, filePath)) {
+				json(res, { oldContent: null, newContent: null });
+				return;
+			}
+
 			if (workspace) {
 				try {
 					const result = await workspace.getFileContents(filePath, oldPath);
@@ -2393,6 +2493,16 @@ export async function startReviewServer(options: {
 			await handleUploadRequest(req, res);
 		} else if (url.pathname === "/api/agents" && req.method === "GET") {
 			json(res, { agents: [] });
+		} else if (!aiEnabled && url.pathname.startsWith("/api/agents/")) {
+			// The exact endpoint above is feedback routing, not a review job.
+			if (
+				url.pathname.slice("/api/agents/".length) === "capabilities" &&
+				req.method === "GET"
+			) {
+				json(res, { mode: "review", providers: [], available: false });
+			} else {
+				json(res, { error: "AI features disabled" }, 503);
+			}
 		} else if (
 			url.pathname === "/api/agents/review-profiles" &&
 			req.method === "GET"
@@ -2593,7 +2703,7 @@ export async function startReviewServer(options: {
 			// AI sessions pin their cwd at creation — make sure the PR checkout
 			// exists first so sessions never root in a transient fallback
 			// (mirrors the Bun server; no-op while the pool entry is ready).
-			if (req.method === "POST" && url.pathname === "/api/ai/session" && options.worktreePool && prMeta) {
+			if (aiRuntime && req.method === "POST" && url.pathname === "/api/ai/session" && options.worktreePool && prMeta) {
 				// If the checkout can't be produced, refuse instead of starting a
 				// session rooted in the wrong directory.
 				try {

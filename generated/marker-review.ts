@@ -2,13 +2,13 @@
 import {
   profileHasCustomSection,
   type ResolvedReviewProfile,
-} from "./review-profiles.js";
+} from "./review-profiles.ts";
 import {
   transformSeverityFindings,
   type ReviewSeverity,
   type ReviewFinding,
   type ReviewAnnotationInput,
-} from "./review-findings";
+} from "./review-findings.ts";
 
 /**
  * Marker Review Engines — the shared machinery for review CLIs that expose NO

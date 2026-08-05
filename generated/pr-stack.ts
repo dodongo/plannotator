@@ -1,14 +1,14 @@
 // @generated — DO NOT EDIT. Source: packages/shared/pr-stack.ts
-import type { DiffResult, ReviewGitRuntime } from "./review-core";
-import { ensureObjectAvailable } from "./worktree";
+import type { DiffResult, ReviewGitRuntime } from "./review-core.ts";
+import { ensureObjectAvailable } from "./worktree.ts";
 import type {
   PRDiffScopeOption,
   PRMetadata,
   PRStackInfo,
   PRStackTree,
   PRStackNode,
-} from "./pr-types";
-export type { PRDiffScope, PRDiffScopeOption, PRStackInfo, PRStackTree, PRStackNode } from "./pr-types";
+} from "./pr-types.ts";
+export type { PRDiffScope, PRDiffScopeOption, PRStackInfo, PRStackTree, PRStackNode } from "./pr-types.ts";
 
 function branchNameIsSafe(branch: string): boolean {
   return branch.trim().length > 0 && !branch.startsWith("-") && !branch.includes("\0");

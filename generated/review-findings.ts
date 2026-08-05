@@ -1,6 +1,6 @@
 // @generated — DO NOT EDIT. Source: packages/server/review-findings.ts
-import { classifyFindingPlacement } from "./external-annotation.js";
-import { toRelativePath } from "./path-utils.js";
+import { classifyFindingPlacement } from "./external-annotation.ts";
+import { toRelativePath } from "./path-utils.ts";
 
 /**
  * Shared review-finding model + transform.

@@ -7,11 +7,11 @@
  */
 
 import { join } from "path";
-import { getPlannotatorDataDir } from "./data-dir";
+import { getPlannotatorDataDir } from "./data-dir.ts";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
 import { execSync } from "child_process";
 
-import type { DefaultDiffType, DiffLineBgIntensity, DiffOptions } from './config-types.js';
+import type { DefaultDiffType, DiffLineBgIntensity, DiffOptions } from './config-types.ts';
 export type { DefaultDiffType, DiffLineBgIntensity, DiffOptions };
 
 /** Single conventional comment label entry stored in config.json */
@@ -54,6 +54,7 @@ export interface PromptConfig {
     fileFeedback?: string;
     messageFeedback?: string;
     approved?: string;
+    approvedWithNotes?: string;
   };
 }
 
@@ -115,6 +116,13 @@ export interface PlannotatorConfig {
    */
   annotateHistory?: boolean;
   /**
+   * Persist successful Guided Reviews (guide content + per-section reviewed
+   * state) under ~/.plannotator/guides/ (or PLANNOTATOR_DATA_DIR) so they
+   * survive closing Plannotator. Set to false to disable writes; already-saved
+   * guides remain readable and listed. Default: true.
+   */
+  guideHistory?: boolean;
+  /**
    * Inject a Plannotator Flavored Markdown reminder into every EnterPlanMode
    * call so the agent is aware it can enrich plans with code-file links,
    * callouts, tables, diagrams, task lists, and the other PFM extensions.
@@ -145,6 +153,19 @@ export interface PlannotatorConfig {
    * PLANNOTATOR_CURSOR_SANDBOX env var, which takes precedence.
    */
   cursorSandbox?: boolean;
+  /**
+   * Mirror the approved plan checklist into an editable todo provider during
+   * execution (issue #484). "auto" (default) syncs whenever a provider is
+   * detected — currently pi-todos. Detection checks the configured todo
+   * directory; PI_TODO_PATH only redirects which directory is checked.
+   *
+   * The mirror is additive: the progress widget is left alone. pi-todos has no
+   * live surface of its own (its list renders on demand in `/todos`), so the
+   * widget stays the at-a-glance tracker while the provider contributes
+   * editable, session-durable todos. Sync is one-way; provider-side edits are
+   * never read back. Failures are non-fatal.
+   */
+  todoProvider?: "auto" | "off";
 }
 
 const CONFIG_DIR = getPlannotatorDataDir();
@@ -285,6 +306,20 @@ export function resolveAnnotateHistory(config: PlannotatorConfig): boolean {
   return coerceConfigBoolean(config.annotateHistory, true);
 }
 
+/**
+ * Resolve whether successful Guided Reviews are persisted to disk.
+ *
+ * Priority (highest wins):
+ *   PLANNOTATOR_GUIDE_HISTORY env var  →  config.guideHistory  →  default true
+ */
+export function resolveGuideHistory(config: PlannotatorConfig): boolean {
+  const envVal = process.env.PLANNOTATOR_GUIDE_HISTORY;
+  if (envVal !== undefined) {
+    return envVal === "1" || envVal.toLowerCase() === "true";
+  }
+  return coerceConfigBoolean(config.guideHistory, true);
+}
+
 export function resolveUseJina(cliNoJina: boolean, config: PlannotatorConfig): boolean {
   // CLI flag has highest priority
   if (cliNoJina) return false;
@@ -313,6 +348,19 @@ export function resolveSharingEnabled(config: PlannotatorConfig): boolean {
 }
 
 /**
+ * Resolve whether Plannotator-managed AI features are enabled.
+ *
+ * Set PLANNOTATOR_AI=disabled to prevent provider runtime initialization and
+ * hide the corresponding UI. External agents may still open Plannotator as a
+ * review surface and submit annotations through the external annotation API.
+ */
+export function resolveAIEnabled(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return env.PLANNOTATOR_AI?.toLowerCase() !== "disabled";
+}
+
+/**
  * Resolve whether Cursor review jobs pass `--sandbox enabled` to the `agent` CLI.
  *
  * Priority (highest wins):
@@ -329,4 +377,26 @@ export function resolveCursorSandbox(config: PlannotatorConfig): boolean {
     return v !== "0" && v !== "false" && v !== "disabled";
   }
   return coerceConfigBoolean(config.cursorSandbox, true);
+}
+
+/**
+ * Resolve whether the approved plan checklist is mirrored into an editable todo
+ * provider during execution.
+ *
+ * Priority (highest wins):
+ *   PLANNOTATOR_TODO_PROVIDER env var  →  config.todoProvider  →  default auto
+ *
+ * Env values `off` / `0` / `false` / `disabled` turn the mirror off, matching
+ * the vocabulary the other flags accept; anything else — including `auto` —
+ * keeps it on. Enabled only means "sync when a provider is detected": with no
+ * provider present, the progress widget is the whole experience either way.
+ */
+export function resolveTodoProviderEnabled(config: PlannotatorConfig): boolean {
+  const envVal = process.env.PLANNOTATOR_TODO_PROVIDER;
+  if (envVal !== undefined) {
+    const v = envVal.toLowerCase();
+    return v !== "off" && v !== "0" && v !== "false" && v !== "disabled";
+  }
+  if (config.todoProvider !== undefined) return config.todoProvider !== "off";
+  return true;
 }

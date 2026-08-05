@@ -5,9 +5,9 @@
  * All functions use the `gh` CLI via the PRRuntime abstraction.
  */
 
-import type { PRRuntime, PRMetadata, PRContext, PRReviewThread, PRThreadComment, PRReviewFileComment, CommandResult, PRStackTree, PRStackNode, PRListItem } from "./pr-types";
-import { encodeApiFilePath } from "./pr-types";
-import { parsePaginatedArray } from "./cli-pagination";
+import type { PRRuntime, PRMetadata, PRContext, PRReviewThread, PRThreadComment, PRReviewFileComment, CommandResult, PRStackTree, PRStackNode, PRListItem } from "./pr-types.ts";
+import { encodeApiFilePath } from "./pr-types.ts";
+import { parsePaginatedArray } from "./cli-pagination.ts";
 
 // GitHub-specific PRRef shape (used internally)
 interface GhPRRef {

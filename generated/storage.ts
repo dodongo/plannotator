@@ -10,9 +10,9 @@
 
 import { join, resolve, sep } from "path";
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, statSync, existsSync } from "fs";
-import { sanitizeTag } from "./project";
-import { resolveUserPath } from "./resolve-file";
-import { getPlannotatorDataDir } from "./data-dir";
+import { sanitizeTag } from "./project.ts";
+import { resolveUserPath } from "./resolve-file.ts";
+import { getPlannotatorDataDir } from "./data-dir.ts";
 
 const DATA_DIR = getPlannotatorDataDir();
 
@@ -105,7 +105,7 @@ export function saveFinalSnapshot(
 
 // --- Plan Archive ---
 
-import type { ArchivedPlan } from './storage-types.js';
+import type { ArchivedPlan } from './storage-types.ts';
 export type { ArchivedPlan };
 
 /**
